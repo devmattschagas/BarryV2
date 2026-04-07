@@ -14,7 +14,7 @@ from typing import Any, AsyncGenerator, Literal
 import httpx
 from pydantic import BaseModel, Field
 
-from agentscope_runtime import AgentApp
+from agentscope_runtime.engine import AgentApp
 
 APP_VERSION = "0.1.0"
 
