@@ -1,0 +1,10 @@
+name: barry_vad
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+dependencies:
+  barry_core:
+    path: ../barry_core
+  barry_native_ffi:
+    path: ../barry_native_ffi

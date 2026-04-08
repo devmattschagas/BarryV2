@@ -1,0 +1,13 @@
+name: barry_ui_hud
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  barry_core:
+    path: ../barry_core
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
