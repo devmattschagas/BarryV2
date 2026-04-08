@@ -28,11 +28,11 @@ class VadHysteresisController {
     required this.telemetry,
     this.nativeEnabled = true,
     BarryVadNative? native,
-  }) : _native = native ?? BarryVadNative();
+  }) : _native = nativeEnabled ? (native ?? BarryVadNative()) : null;
 
   final VadConfig config;
   final TelemetryBus telemetry;
-  final BarryVadNative _native;
+  final BarryVadNative? _native;
   final bool nativeEnabled;
 
   int _speechMs = 0;
@@ -40,13 +40,13 @@ class VadHysteresisController {
   int _cooldownLeftMs = 0;
 
   VadResult process(List<int> pcm16Mono16k, {int frameMs = 20}) {
-    final prob = nativeEnabled ? _native.inferSpeechProbability(pcm16Mono16k) : 0.0;
+    final prob = nativeEnabled ? (_native?.inferSpeechProbability(pcm16Mono16k) ?? 0.0) : 0.0;
     return _applyStateTransition(prob: prob, frameMs: frameMs, inferenceMs: 0);
   }
 
   Future<VadResult> processAsync(List<int> pcm16Mono16k, {int frameMs = 20}) async {
     final sw = Stopwatch()..start();
-    final prob = nativeEnabled ? await _native.inferSpeechProbabilityAsync(pcm16Mono16k) : 0.0;
+    final prob = nativeEnabled ? await (_native?.inferSpeechProbabilityAsync(pcm16Mono16k) ?? Future.value(0.0)) : 0.0;
     sw.stop();
     return _applyStateTransition(prob: prob, frameMs: frameMs, inferenceMs: sw.elapsedMicroseconds / 1000);
   }
