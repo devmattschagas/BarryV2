@@ -39,17 +39,27 @@ class FasterWhisperSidecarEngine implements TranscriptionEngine {
   @override
   Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) async* {
     final channel = WebSocketChannel.connect(endpoint);
-    await for (final frame in pcm16leFrames) {
-      channel.sink.add(frame);
-      final msg = await channel.stream.first;
-      final decoded = jsonDecode(msg as String) as Map<String, dynamic>;
-      yield TranscriptChunk(
-        text: decoded['text'] as String? ?? '',
-        isFinal: decoded['is_final'] as bool? ?? false,
-        startMs: decoded['start_ms'] as int? ?? 0,
-        endMs: decoded['end_ms'] as int? ?? 0,
-      );
+    final iterator = StreamIterator<Object?>(channel.stream);
+
+    try {
+      await for (final frame in pcm16leFrames) {
+        channel.sink.add(frame);
+        final hasNext = await iterator.moveNext();
+        if (!hasNext) {
+          break;
+        }
+
+        final decoded = jsonDecode(iterator.current as String) as Map<String, dynamic>;
+        yield TranscriptChunk(
+          text: decoded['text'] as String? ?? '',
+          isFinal: decoded['is_final'] as bool? ?? false,
+          startMs: decoded['start_ms'] as int? ?? 0,
+          endMs: decoded['end_ms'] as int? ?? 0,
+        );
+      }
+    } finally {
+      await iterator.cancel();
+      await channel.sink.close();
     }
-    await channel.sink.close();
   }
 }
