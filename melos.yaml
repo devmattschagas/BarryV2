@@ -1,0 +1,8 @@
+name: barry_mobile_hud_live
+packages:
+  - apps/**
+  - packages/**
+
+scripts:
+  analyze: melos exec -- flutter analyze
+  test: melos exec -- flutter test

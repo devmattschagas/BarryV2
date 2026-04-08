@@ -1,0 +1,7 @@
+name: barry_mobile_hud_live_workspace
+publish_to: none
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dev_dependencies:
+  melos: ^6.3.2

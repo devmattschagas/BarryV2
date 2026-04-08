@@ -1,0 +1,10 @@
+name: barry_router
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+dependencies:
+  barry_core:
+    path: ../barry_core
+dev_dependencies:
+  test: ^1.25.2
