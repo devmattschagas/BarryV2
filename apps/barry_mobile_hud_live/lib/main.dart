@@ -1,6 +1,7 @@
 import 'package:barry_core/barry_core.dart';
 import 'package:barry_livekit/barry_livekit.dart';
 import 'package:barry_memory/barry_memory.dart';
+import 'package:barry_native_ffi/barry_native_ffi.dart';
 import 'package:barry_platform_bridge/barry_platform_bridge.dart';
 import 'package:barry_router/barry_router.dart';
 import 'package:barry_stt/barry_stt.dart';
@@ -15,6 +16,8 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   final telemetry = InMemoryTelemetryBus();
+  final nativeReport = const NativeLibraryLoader().verify();
+
   final coordinator = HudCoordinator(
     telemetry: telemetry,
     router: RuleBasedInferenceRouter(telemetry: telemetry),
@@ -22,6 +25,7 @@ void main() {
     vadController: VadHysteresisController(
       config: const VadConfig(),
       telemetry: telemetry,
+      nativeEnabled: nativeReport.ok,
     ),
     livekit: MockLiveKitSessionManager(),
     memory: InMemoryMemoryStore(),

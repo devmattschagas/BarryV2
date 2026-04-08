@@ -1,18 +1,19 @@
 # ARCHITECTURE
 
 ## Consistency check e correções técnicas
-1. **`faster-whisper` no Android**: não há integração Android oficial por `pip`; corrigido para `TranscriptionEngine` com `FasterWhisperSidecarEngine` via loopback WebSocket e fallback mock.
-2. **LiteRT-LM**: como depende de APIs Android/Kotlin, ficou no `barry_platform_bridge` (plugin), não no pacote FFI puro.
-3. **Silero VAD**: implementação por wrapper nativo ONNX routeada no pacote `barry_native_ffi`; aqui o repositório inclui stubs compiláveis e pontos de substituição para `.so` reais.
-4. **Barry v2/NOMAD/LEANN sem contrato público**: definimos ports/adapters sem inventar payload proprietário.
+1. **Trap de `.so` fake**: removidos arquivos texto em `jniLibs`; as libs agora são geradas por CMake (`zeptoclaw`, `barry_vad_native`, `barry_whisper_worker`, `onnxruntime` stub dev) no build Android.
+2. **`faster-whisper` no Android**: não há integração Android oficial por `pip`; mantido `TranscriptionEngine` com `FasterWhisperSidecarEngine` via loopback e fallback mock.
+3. **LiteRT-LM**: integração em plugin (`barry_platform_bridge`) por depender de APIs Android/Kotlin; não fica no FFI puro.
+4. **VAD em produção**: arquitetura exige Silero + ONNX Runtime; o stub atual adiciona ruído-adaptativo/hangover para dev/CI e define ponto explícito de troca para chamada ONNX real.
+5. **Barry v2/NOMAD/LEANN sem contrato público**: somente ports/adapters configuráveis, sem inventar payload proprietário.
 
 ## Módulos
-- `barry_core`: telemetria, ring buffer, estado HUD e coordenação.
+- `barry_core`: telemetria, ring buffer, estado HUD.
 - `barry_router`: decisão auditável LOCAL/CLOUD.
 - `barry_stt`: abstrações STT + sidecar.
 - `barry_vad`: hysteresis + chamada nativa VAD.
 - `barry_platform_bridge`: ponte LiteRT-LM por plugin.
-- `barry_native_ffi`: ZeptoClaw + VAD + worker nativo (stubs).
+- `barry_native_ffi`: ZeptoClaw + VAD + worker nativo.
 - `barry_memory`: MVP NOMAD/LEANN com embeddings determinísticos.
 - `barry_livekit`, `barry_vision`, `barry_ui_hud`: transporte, visão e UX HUD.
 
@@ -20,4 +21,4 @@
 Mic -> ring buffer PCM16 16k -> VAD -> gate -> STT stream -> router -> LLM local/cloud -> HUD.
 
 ## Startup native libs
-Constantes centralizadas em `NativeLibNames`. Inicialização valida carregamento por `DynamicLibrary.open` no primeiro uso.
+`NativeLibraryLoader.verify()` valida abertura de libs obrigatórias no boot e permite degradação controlada quando faltarem artefatos nativos.

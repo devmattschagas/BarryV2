@@ -23,14 +23,3 @@ int32_t zeptoclaw_get_device_state(char* out_buf, int32_t out_len) {
   strcpy(out_buf, state);
   return 0;
 }
-
-double barry_vad_infer(const int16_t* pcm16, int32_t length) {
-  if (pcm16 == NULL || length <= 0) return 0.0;
-  long long acc = 0;
-  for (int32_t i = 0; i < length; ++i) {
-    int16_t s = pcm16[i];
-    acc += (s >= 0 ? s : -s);
-  }
-  double mean = (double)acc / (double)length;
-  return mean > 400.0 ? 0.9 : 0.1;
-}

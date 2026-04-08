@@ -10,6 +10,34 @@ class NativeLibNames {
   static const vad = 'libbarry_vad_native.so';
   static const onnx = 'libonnxruntime.so';
   static const whisperWorker = 'libbarry_whisper_worker.so';
+
+  static const requiredForStartup = [zeptoClaw, vad, onnx, whisperWorker];
+}
+
+class NativeStartupReport {
+  const NativeStartupReport({required this.loaded, required this.failed});
+  final List<String> loaded;
+  final Map<String, String> failed;
+
+  bool get ok => failed.isEmpty;
+}
+
+class NativeLibraryLoader {
+  const NativeLibraryLoader();
+
+  NativeStartupReport verify() {
+    final loaded = <String>[];
+    final failed = <String, String>{};
+    for (final name in NativeLibNames.requiredForStartup) {
+      try {
+        DynamicLibrary.open(name);
+        loaded.add(name);
+      } catch (e) {
+        failed[name] = '$e';
+      }
+    }
+    return NativeStartupReport(loaded: loaded, failed: failed);
+  }
 }
 
 class BarryVadNative {

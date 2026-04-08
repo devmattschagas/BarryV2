@@ -8,10 +8,14 @@ Monorepo Flutter modular para nó híbrido Cloud/Edge com foco Android.
 - `docs/`: arquitetura, ADRs, estratégia de testes e orçamento de performance.
 
 ## Premissas honestas
-- **Sem contratos proprietários reais** Barry v2/NOMAD/LEANN: usamos portas + adapters mock.
+- **Sem contratos proprietários reais** Barry v2/NOMAD/LEANN: usamos ports + adapters mock.
 - **STT faster-whisper no Android**: apenas via sidecar/worker abstrato (WebSocket/gRPC loopback), nunca `pip` embutido.
 - **LLM local**: ponte de plugin para LiteRT-LM (Kotlin), com fallback para cloud/mock.
-- **VAD local**: interface + wrapper nativo ONNX Runtime; build inclui stubs compiláveis.
+- **VAD local**: caminho de produção definido para Silero + ONNX Runtime; build atual inclui stub nativo robusto para dev/CI.
+
+## Build nativo
+As bibliotecas `.so` não são arquivos texto no repositório.
+Elas são compiladas pelo CMake durante o build Android (`externalNativeBuild`).
 
 ## Quickstart
 ```bash
