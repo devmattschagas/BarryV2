@@ -8,4 +8,10 @@ void main() {
     final result = router.decide(utterance: 'open map', localLlmAvailable: true, networkHealthy: true);
     expect(result.mode, ProcessingMode.local);
   });
+
+  test('routes question to cloud even when short', () {
+    final router = RuleBasedInferenceRouter(telemetry: InMemoryTelemetryBus());
+    final result = router.decide(utterance: 'why is the sky blue?', localLlmAvailable: true, networkHealthy: true);
+    expect(result.mode, ProcessingMode.cloud);
+  });
 }

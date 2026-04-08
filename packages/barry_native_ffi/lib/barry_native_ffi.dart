@@ -2,6 +2,7 @@ library barry_native_ffi;
 
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 
@@ -53,12 +54,39 @@ class BarryVadNative {
 
   double inferSpeechProbability(List<int> pcm16) {
     final ptr = calloc<Int16>(pcm16.length);
-    for (var i = 0; i < pcm16.length; i++) {
-      ptr[i] = pcm16[i];
+    try {
+      final view = ptr.asTypedList(pcm16.length);
+      view.setAll(0, pcm16);
+      return _infer(ptr, pcm16.length);
+    } finally {
+      calloc.free(ptr);
     }
-    final score = _infer(ptr, pcm16.length);
+  }
+
+  Future<double> inferSpeechProbabilityAsync(List<int> pcm16) {
+    final request = _VadInferRequest(samples: List<int>.from(pcm16, growable: false), useProcessLibrary: !Platform.isAndroid);
+    return Isolate.run(() => _inferVadInIsolate(request));
+  }
+}
+
+class _VadInferRequest {
+  const _VadInferRequest({required this.samples, required this.useProcessLibrary});
+  final List<int> samples;
+  final bool useProcessLibrary;
+}
+
+double _inferVadInIsolate(_VadInferRequest request) {
+  final lib = request.useProcessLibrary ? DynamicLibrary.process() : DynamicLibrary.open(NativeLibNames.vad);
+  final infer = lib
+      .lookup<NativeFunction<Double Function(Pointer<Int16>, Int32)>>('barry_vad_infer')
+      .asFunction<double Function(Pointer<Int16>, int)>();
+  final ptr = calloc<Int16>(request.samples.length);
+  try {
+    final view = ptr.asTypedList(request.samples.length);
+    view.setAll(0, request.samples);
+    return infer(ptr, request.samples.length);
+  } finally {
     calloc.free(ptr);
-    return score;
   }
 }
 
@@ -80,9 +108,56 @@ class ZeptoClawExecutor {
     }
     final cmd = command.toNativeUtf8();
     final payload = payloadJson.toNativeUtf8();
-    final result = _executeScript(cmd, payload, timeoutMs);
+    try {
+      return _executeScript(cmd, payload, timeoutMs);
+    } finally {
+      calloc.free(cmd);
+      calloc.free(payload);
+    }
+  }
+
+  Future<int> executeScriptAsync({required String command, required String payloadJson, int timeoutMs = 2000}) {
+    final request = _ScriptRequest(
+      command: command,
+      payloadJson: payloadJson,
+      timeoutMs: timeoutMs,
+      useProcessLibrary: !Platform.isAndroid,
+    );
+    return Isolate.run(() => _executeScriptInIsolate(request));
+  }
+}
+
+class _ScriptRequest {
+  const _ScriptRequest({
+    required this.command,
+    required this.payloadJson,
+    required this.timeoutMs,
+    required this.useProcessLibrary,
+  });
+
+  final String command;
+  final String payloadJson;
+  final int timeoutMs;
+  final bool useProcessLibrary;
+}
+
+int _executeScriptInIsolate(_ScriptRequest request) {
+  final allowed = {'status.read', 'sensors.scan', 'nav.lock'};
+  if (!allowed.contains(request.command)) {
+    throw ArgumentError('command_not_allowlisted');
+  }
+
+  final lib = request.useProcessLibrary ? DynamicLibrary.process() : DynamicLibrary.open(NativeLibNames.zeptoClaw);
+  final execute = lib
+      .lookup<NativeFunction<Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Int32)>>('zeptoclaw_execute_script')
+      .asFunction<int Function(Pointer<Utf8>, Pointer<Utf8>, int)>();
+
+  final cmd = request.command.toNativeUtf8();
+  final payload = request.payloadJson.toNativeUtf8();
+  try {
+    return execute(cmd, payload, request.timeoutMs);
+  } finally {
     calloc.free(cmd);
     calloc.free(payload);
-    return result;
   }
 }

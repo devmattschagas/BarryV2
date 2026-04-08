@@ -40,13 +40,21 @@ class VadHysteresisController {
   int _cooldownLeftMs = 0;
 
   VadResult process(List<int> pcm16Mono16k, {int frameMs = 20}) {
-    final sw = Stopwatch()..start();
     final prob = nativeEnabled ? _native.inferSpeechProbability(pcm16Mono16k) : 0.0;
-    sw.stop();
+    return _applyStateTransition(prob: prob, frameMs: frameMs, inferenceMs: 0);
+  }
 
+  Future<VadResult> processAsync(List<int> pcm16Mono16k, {int frameMs = 20}) async {
+    final sw = Stopwatch()..start();
+    final prob = nativeEnabled ? await _native.inferSpeechProbabilityAsync(pcm16Mono16k) : 0.0;
+    sw.stop();
+    return _applyStateTransition(prob: prob, frameMs: frameMs, inferenceMs: sw.elapsedMicroseconds / 1000);
+  }
+
+  VadResult _applyStateTransition({required double prob, required int frameMs, required num inferenceMs}) {
     if (_cooldownLeftMs > 0) {
       _cooldownLeftMs -= frameMs;
-      telemetry.emit(TelemetryEvent(TelemetryMetric.vadInferenceMs, sw.elapsedMicroseconds / 1000));
+      telemetry.emit(TelemetryEvent(TelemetryMetric.vadInferenceMs, inferenceMs));
       return const VadResult(voiceDetected: false, speechRatio: 0.0);
     }
 
@@ -62,7 +70,7 @@ class VadHysteresisController {
     }
 
     final detected = _speechMs >= config.minSpeechMs;
-    telemetry.emit(TelemetryEvent(TelemetryMetric.vadInferenceMs, sw.elapsedMicroseconds / 1000));
+    telemetry.emit(TelemetryEvent(TelemetryMetric.vadInferenceMs, inferenceMs));
     return VadResult(voiceDetected: detected, speechRatio: prob);
   }
 }
