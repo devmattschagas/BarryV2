@@ -1,0 +1,38 @@
+name: barry_mobile_hud_live
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  barry_core:
+    path: ../../packages/barry_core
+  barry_ui_hud:
+    path: ../../packages/barry_ui_hud
+  barry_livekit:
+    path: ../../packages/barry_livekit
+  barry_router:
+    path: ../../packages/barry_router
+  barry_stt:
+    path: ../../packages/barry_stt
+  barry_vad:
+    path: ../../packages/barry_vad
+  barry_memory:
+    path: ../../packages/barry_memory
+  barry_vision:
+    path: ../../packages/barry_vision
+  barry_platform_bridge:
+    path: ../../packages/barry_platform_bridge
+  barry_native_ffi:
+    path: ../../packages/barry_native_ffi
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
