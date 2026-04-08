@@ -1,21 +1,17 @@
-# BARRY MOBILE HUD - LIVE
+# BarryV2 (Android-first, arquitetura híbrida local + nuvem)
 
-Monorepo Flutter modular para nó híbrido Cloud/Edge com foco Android.
+BarryV2 é uma base Flutter/Android para HUD de voz com roteamento explícito por capability, tolerância a falhas por subsistema e modo degradado granular.
 
-## Estrutura
-- `apps/barry_mobile_hud_live`: app Flutter principal.
-- `packages/*`: módulos por responsabilidade (core, UI HUD, STT, VAD, router, memória, FFI, plugin etc.).
-- `docs/`: arquitetura, ADRs, estratégia de testes e orçamento de performance.
+## Princípios de produto (não demo)
+- Híbrido real: não força tudo local nem tudo cloud.
+- Roteamento auditável por subsistema (VAD/STT/TTS/LLM/memória/tools).
+- Degradação por capability (falha parcial não derruba pipeline inteiro).
+- Integrações cloud reais preservadas no desenho: **Qwen2.5 14B**, **OpenClaude/Claude Code OSS**, **ZeptoClaw cloud**, **Vault**, **Claude-Mem**, **PAUL**.
 
-## Premissas honestas
-- **Sem contratos proprietários reais** Barry v2/NOMAD/LEANN: usamos ports + adapters mock.
-- **STT faster-whisper no Android**: apenas via sidecar/worker abstrato (WebSocket/gRPC loopback), nunca `pip` embutido.
-- **LLM local**: ponte de plugin para LiteRT-LM (Kotlin), com fallback para cloud/mock.
-- **VAD local**: caminho de produção definido para Silero + ONNX Runtime; build atual inclui stub nativo robusto para dev/CI.
-
-## Build nativo
-As bibliotecas `.so` não são arquivos texto no repositório.
-Elas são compiladas pelo CMake durante o build Android (`externalNativeBuild`).
+## Stack e responsabilidades
+- **Local-first crítico de latência**: VAD, memória operacional curta, fallback STT/TTS, regras de segurança.
+- **Cloud principal para complexidade**: Qwen2.5 14B, execução remota de tools com ZeptoClaw, memória longa (Vault), otimização/contexto (Claude-Mem/PAUL), orquestração (OpenClaude).
+- **Transporte de mídia remoto (streaming contínuo)**: WebRTC como caminho principal; WebSocket/HTTP apenas quando tecnicamente justificado.
 
 ## Quickstart
 ```bash
@@ -24,16 +20,12 @@ melos bootstrap
 melos run analyze
 melos run test
 cd apps/barry_mobile_hud_live
-flutter build apk --release \
-  --dart-define=BARRY_LIVEKIT_URL=wss://example.invalid \
-  --dart-define=BARRY_LIVEKIT_TOKEN=dev-token
+flutter build apk --release
 ```
 
-## Signing opcional CI
-Variáveis esperadas:
-- `ANDROID_KEYSTORE_BASE64`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
+## CI
+Workflow valida analyze/test/build, presença de libs nativas no APK e gera build assinado quando secrets existem; se não existirem, mantém build CI unsigned de forma segura.
 
-Sem essas secrets o workflow gera APK unsigned de CI.
+## Estado real de implementação
+- Implementado em código: capability profile granular, router híbrido auditável, STT/TTS híbridos com fallback, VAD robusto com fallback heurístico, memória local com embedding automático, coordinator idempotente e degradado por capability.
+- Ainda abstrato/mockado: integrações efetivas de produção com endpoints de Qwen/OpenClaude/Vault/Claude-Mem/PAUL/ZeptoClaw cloud (ports prontos, wiring real pendente por ambiente).

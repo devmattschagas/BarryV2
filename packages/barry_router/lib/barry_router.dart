@@ -2,17 +2,56 @@ library barry_router;
 
 import 'package:barry_core/barry_core.dart';
 
-enum ProcessingMode { local, cloud }
+enum ProcessingMode { local, cloud, hybrid }
+
+enum MemoryMode { localOnly, vault, layeredCloud }
+
+class RoutingContext {
+  const RoutingContext({
+    required this.utterance,
+    required this.capabilities,
+    required this.networkHealthy,
+    required this.estimatedLatencyMs,
+    required this.deviceThermalHigh,
+    required this.estimatedCloudCost,
+    required this.privacySensitive,
+    required this.requiresTools,
+    required this.requiresLongMemory,
+    required this.minQuality,
+  });
+
+  final String utterance;
+  final CapabilityProfile capabilities;
+  final bool networkHealthy;
+  final int estimatedLatencyMs;
+  final bool deviceThermalHigh;
+  final double estimatedCloudCost;
+  final bool privacySensitive;
+  final bool requiresTools;
+  final bool requiresLongMemory;
+  final double minQuality;
+}
 
 class RouteDecision {
-  const RouteDecision({required this.mode, required this.reason, required this.audit});
-  final ProcessingMode mode;
+  const RouteDecision({
+    required this.inferenceMode,
+    required this.sttMode,
+    required this.ttsMode,
+    required this.memoryMode,
+    required this.reason,
+    required this.audit,
+  });
+
+  final ProcessingMode inferenceMode;
+  final ProcessingMode sttMode;
+  final ProcessingMode ttsMode;
+  final MemoryMode memoryMode;
   final String reason;
   final Map<String, String> audit;
 }
 
 abstract interface class InferenceRouter {
-  RouteDecision decide({required String utterance, required bool localLlmAvailable, required bool networkHealthy});
+  RouteDecision decide(RoutingContext context);
 }
 
 class RuleBasedInferenceRouter implements InferenceRouter {
@@ -20,48 +59,54 @@ class RuleBasedInferenceRouter implements InferenceRouter {
   final TelemetryBus telemetry;
 
   static final RegExp _tokenPattern = RegExp(r"[\\p{L}\\p{N}']+", unicode: true);
-  static const Set<String> _commandKeywords = {
-    'open',
-    'close',
-    'start',
-    'stop',
-    'call',
-    'turn',
-    'ligue',
-    'desligue',
-    'abrir',
-    'fechar',
-    'mostrar',
-    'hide',
-  };
 
   @override
-  RouteDecision decide({required String utterance, required bool localLlmAvailable, required bool networkHealthy}) {
-    final cleaned = utterance.trim().toLowerCase();
-    final tokens = _tokenPattern.allMatches(cleaned).map((m) => m.group(0)!).toList(growable: false);
-    final tokenCount = tokens.length;
-    final isQuestion = cleaned.contains('?') ||
-        tokens.any((t) => {'how', 'why', 'what', 'quando', 'como', 'por', 'porque', 'qual'}.contains(t));
-    final hasCommandVerb = tokens.any(_commandKeywords.contains);
-    final hasComplexityMarker = cleaned.contains(':') || cleaned.contains(';') || tokenCount > 14;
+  RouteDecision decide(RoutingContext context) {
+    final tokens = _tokenPattern.allMatches(context.utterance.toLowerCase()).map((m) => m.group(0)!).toList();
+    final isComplex = tokens.length > 14 || context.utterance.contains('?') || context.requiresLongMemory;
 
-    final likelyCommand = hasCommandVerb && tokenCount <= 14 && !isQuestion;
-    final mode = !networkHealthy
+    final canUseCloud = context.networkHealthy && context.capabilities.hasCloudQwen;
+    final canUseLocal = context.capabilities.hasLocalLlm && !context.deviceThermalHigh;
+
+    final preferLocalByPrivacy = context.privacySensitive && canUseLocal;
+    final preferCloudByQuality = context.minQuality >= 0.85 && canUseCloud;
+
+    final inferenceMode = preferLocalByPrivacy
         ? ProcessingMode.local
-        : (localLlmAvailable && likelyCommand && !hasComplexityMarker)
-            ? ProcessingMode.local
-            : ProcessingMode.cloud;
+        : (isComplex || context.requiresTools || preferCloudByQuality || context.estimatedLatencyMs > 450)
+            ? (canUseCloud ? ProcessingMode.cloud : ProcessingMode.local)
+            : (canUseLocal ? ProcessingMode.local : ProcessingMode.cloud);
 
-    telemetry.emit(TelemetryEvent(TelemetryMetric.cloudRoundtripMs, mode == ProcessingMode.cloud ? 1 : 0));
+    final sttMode = context.capabilities.hasLocalStt
+        ? ProcessingMode.local
+        : (context.capabilities.hasRemoteStt ? ProcessingMode.cloud : ProcessingMode.local);
+
+    final ttsMode = context.capabilities.hasLocalTts
+        ? ProcessingMode.local
+        : (context.capabilities.hasRemoteTts ? ProcessingMode.cloud : ProcessingMode.local);
+
+    final memoryMode = context.requiresLongMemory && context.capabilities.hasVault
+        ? (context.capabilities.hasClaudeMem || context.capabilities.hasPaul ? MemoryMode.layeredCloud : MemoryMode.vault)
+        : MemoryMode.localOnly;
+
+    telemetry.emit(TelemetryEvent(TelemetryMetric.cloudRoundtripMs, inferenceMode == ProcessingMode.cloud ? 1 : 0));
+
     return RouteDecision(
-      mode: mode,
-      reason: mode == ProcessingMode.local ? 'offline_or_low_latency_command' : 'cloud_for_complex_or_non_command',
+      inferenceMode: inferenceMode,
+      sttMode: sttMode,
+      ttsMode: ttsMode,
+      memoryMode: memoryMode,
+      reason: 'hybrid_capability_routing',
       audit: {
-        'token_count': '$tokenCount',
-        'is_question': '$isQuestion',
-        'has_command_verb': '$hasCommandVerb',
-        'local_available': '$localLlmAvailable',
-        'network_healthy': '$networkHealthy',
+        'token_count': '${tokens.length}',
+        'is_complex': '$isComplex',
+        'network_healthy': '${context.networkHealthy}',
+        'can_use_cloud': '$canUseCloud',
+        'can_use_local': '$canUseLocal',
+        'privacy_sensitive': '${context.privacySensitive}',
+        'requires_tools': '${context.requiresTools}',
+        'requires_long_memory': '${context.requiresLongMemory}',
+        'estimated_cloud_cost': '${context.estimatedCloudCost}',
       },
     );
   }

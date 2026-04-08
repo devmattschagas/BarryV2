@@ -4,4 +4,6 @@ publish_to: none
 environment:
   sdk: '>=3.4.0 <4.0.0'
 dependencies:
+  barry_core:
+    path: ../barry_core
   ffi: ^2.1.2

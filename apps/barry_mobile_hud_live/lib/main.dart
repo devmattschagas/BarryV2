@@ -18,20 +18,43 @@ void main() {
   final telemetry = InMemoryTelemetryBus();
   final nativeReport = const NativeLibraryLoader().verify();
 
+  final capabilities = const CapabilityDetector().detect(
+    networkHealthy: true,
+    nativeVadLoaded: nativeReport.loaded.contains(NativeLibNames.vad),
+    localLlmBridgeAvailable: true,
+    remoteQwenConfigured: true,
+    remoteSttConfigured: true,
+    remoteTtsConfigured: true,
+    zeptoClawConfigured: true,
+    vaultConfigured: true,
+    claudeMemConfigured: true,
+    paulConfigured: true,
+    embeddingsRemoteConfigured: true,
+    remoteTransport: RemoteTransport.webrtc,
+  );
+
   final coordinator = HudCoordinator(
     telemetry: telemetry,
     router: RuleBasedInferenceRouter(telemetry: telemetry),
-    transcriptionEngine: MockTranscriptionEngine(),
+    transcriptionEngine: HybridTranscriptionEngine(
+      local: LocalTranscriptionEngine(),
+      remote: RemoteSttAdapter(
+        endpoint: Uri.parse('wss://stt.example.invalid/stream'),
+        transport: capabilities.remoteTransport,
+      ),
+      capabilities: capabilities,
+    ),
     vadController: VadHysteresisController(
       config: const VadConfig(),
       telemetry: telemetry,
-      nativeEnabled: nativeReport.ok,
+      nativeEnabled: capabilities.hasLocalVad,
     ),
     livekit: MockLiveKitSessionManager(),
     memory: InMemoryMemoryStore(),
     visionGateway: MockBarryVisionGateway(),
     localLlmEngine: const PlatformLocalLlmEngine(),
     modeController: DegradedModeController(),
+    capabilities: capabilities,
   );
 
   runApp(BarryHudApp(coordinator: coordinator));

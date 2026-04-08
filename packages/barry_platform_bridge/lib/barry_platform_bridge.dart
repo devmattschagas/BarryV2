@@ -25,12 +25,28 @@ class PlatformLocalLlmEngine implements LocalLlmEngine {
 
   @override
   Future<String> infer(String prompt) async {
-    final output = await _channel.invokeMethod<String>('infer', {'prompt': prompt});
-    return output ?? '';
+    try {
+      final output = await _channel.invokeMethod<String>('infer', {'prompt': prompt});
+      return output ?? '';
+    } on MissingPluginException {
+      return '';
+    } on PlatformException {
+      return '';
+    }
   }
 }
 
 class DegradedModeController {
   bool degraded = false;
-  void enable() => degraded = true;
+  final Set<String> degradedCapabilities = <String>{};
+
+  void enable({String reason = 'unknown'}) {
+    degraded = true;
+    degradedCapabilities.add(reason);
+  }
+
+  void disable() {
+    degraded = false;
+    degradedCapabilities.clear();
+  }
 }

@@ -1,11 +1,10 @@
-name: barry_core
+name: barry_tts
 version: 0.1.0
 publish_to: none
 environment:
   sdk: '>=3.4.0 <4.0.0'
 dependencies:
-  flutter:
-    sdk: flutter
-  meta: ^1.12.0
+  barry_core:
+    path: ../barry_core
 dev_dependencies:
   test: ^1.25.2
