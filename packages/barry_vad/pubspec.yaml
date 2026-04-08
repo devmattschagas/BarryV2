@@ -8,3 +8,5 @@ dependencies:
     path: ../barry_core
   barry_native_ffi:
     path: ../barry_native_ffi
+dev_dependencies:
+  test: ^1.25.2

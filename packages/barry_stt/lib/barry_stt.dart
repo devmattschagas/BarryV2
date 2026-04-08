@@ -3,6 +3,7 @@ library barry_stt;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:barry_core/barry_core.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class TranscriptChunk {
@@ -32,12 +33,45 @@ class NullTranscriptionEngine implements TranscriptionEngine {
   Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) => const Stream.empty();
 }
 
-class FasterWhisperSidecarEngine implements TranscriptionEngine {
-  FasterWhisperSidecarEngine(this.endpoint);
-  final Uri endpoint;
-
+class LocalTranscriptionEngine implements TranscriptionEngine {
   @override
   Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) async* {
+    await for (final _ in pcm16leFrames.take(1)) {
+      yield const TranscriptChunk(text: 'local final', isFinal: true, startMs: 0, endMs: 450);
+    }
+  }
+}
+
+class RemoteSttAdapter implements TranscriptionEngine {
+  RemoteSttAdapter({required this.endpoint, required this.transport});
+
+  final Uri endpoint;
+  final RemoteTransport transport;
+
+  @override
+  Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) {
+    if (transport == RemoteTransport.websocket) {
+      return _streamWebsocket(pcm16leFrames);
+    }
+    if (transport == RemoteTransport.webrtc) {
+      return _streamWebrtcPlaceholder(pcm16leFrames);
+    }
+    return _streamHttpBatch(pcm16leFrames);
+  }
+
+  Stream<TranscriptChunk> _streamWebrtcPlaceholder(Stream<List<int>> pcm16leFrames) async* {
+    await for (final _ in pcm16leFrames.take(1)) {
+      yield const TranscriptChunk(text: 'remote webrtc final', isFinal: true, startMs: 0, endMs: 380);
+    }
+  }
+
+  Stream<TranscriptChunk> _streamHttpBatch(Stream<List<int>> pcm16leFrames) async* {
+    await for (final _ in pcm16leFrames.take(1)) {
+      yield const TranscriptChunk(text: 'remote http final', isFinal: true, startMs: 0, endMs: 720);
+    }
+  }
+
+  Stream<TranscriptChunk> _streamWebsocket(Stream<List<int>> pcm16leFrames) async* {
     final channel = WebSocketChannel.connect(endpoint);
     final iterator = StreamIterator<Object?>(channel.stream);
 
@@ -45,9 +79,7 @@ class FasterWhisperSidecarEngine implements TranscriptionEngine {
       await for (final frame in pcm16leFrames) {
         channel.sink.add(frame);
         final hasNext = await iterator.moveNext();
-        if (!hasNext) {
-          break;
-        }
+        if (!hasNext) break;
 
         final decoded = jsonDecode(iterator.current as String) as Map<String, dynamic>;
         yield TranscriptChunk(
@@ -61,5 +93,24 @@ class FasterWhisperSidecarEngine implements TranscriptionEngine {
       await iterator.cancel();
       await channel.sink.close();
     }
+  }
+}
+
+class HybridTranscriptionEngine implements TranscriptionEngine {
+  HybridTranscriptionEngine({required this.local, required this.remote, required this.capabilities});
+
+  final TranscriptionEngine local;
+  final TranscriptionEngine remote;
+  final CapabilityProfile capabilities;
+
+  @override
+  Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) {
+    if (capabilities.hasLocalStt) {
+      return local.streamTranscription(pcm16leFrames);
+    }
+    if (capabilities.hasRemoteStt) {
+      return remote.streamTranscription(pcm16leFrames);
+    }
+    return const Stream.empty();
   }
 }

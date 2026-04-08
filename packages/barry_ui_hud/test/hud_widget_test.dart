@@ -5,6 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   testWidgets('renders idle state', (tester) async {
     await tester.pumpWidget(const BarryHudScreen(state: HudUiState.idle));
-    expect(find.textContaining('HudUiState.idle'), findsOneWidget);
+    expect(find.textContaining('HUD State: idle'), findsOneWidget);
   });
 }

@@ -4,6 +4,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:barry_core/barry_core.dart';
 import 'package:ffi/ffi.dart';
 
 class NativeLibNames {
@@ -64,9 +65,13 @@ class BarryVadNative {
     }
   }
 
-  Future<double> inferSpeechProbabilityAsync(List<int> pcm16) {
+  Future<double> inferSpeechProbabilityAsync(List<int> pcm16) async {
     final request = _VadInferRequest(samples: List<int>.from(pcm16, growable: false), useProcessLibrary: !Platform.isAndroid);
-    return Isolate.run(() => _inferVadInIsolate(request));
+    try {
+      return await Isolate.run(() => _inferVadInIsolate(request));
+    } catch (_) {
+      return 0.0;
+    }
   }
 }
 
@@ -106,8 +111,7 @@ class ZeptoClawExecutor {
   }
 
   int executeScript({required String command, required String payloadJson, int timeoutMs = 2000}) {
-    final allowed = {'status.read', 'sensors.scan', 'nav.lock'};
-    if (!allowed.contains(command)) {
+    if (!CommandPolicies.zeptoClawCloud.canExecute(command)) {
       throw ArgumentError('command_not_allowlisted');
     }
     final cmd = command.toNativeUtf8();
@@ -146,8 +150,7 @@ class _ScriptRequest {
 }
 
 int _executeScriptInIsolate(_ScriptRequest request) {
-  final allowed = {'status.read', 'sensors.scan', 'nav.lock'};
-  if (!allowed.contains(request.command)) {
+  if (!CommandPolicies.zeptoClawCloud.canExecute(request.command)) {
     throw ArgumentError('command_not_allowlisted');
   }
 

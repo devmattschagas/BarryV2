@@ -9,4 +9,12 @@ void main() {
     final out = await store.topK('alpha', 1);
     expect(out.first.id, '1');
   });
+
+  test('autogenerates embedding when item embedding is empty', () async {
+    final store = InMemoryMemoryStore();
+    await store.put(const MemoryItem(id: '2', text: 'beta', embedding: []));
+    final all = await store.all();
+    expect(all.single.embedding, isNotEmpty);
+    expect(all.single.embeddingSource, EmbeddingSource.local);
+  });
 }
