@@ -6,12 +6,13 @@ plugins {
 
 android {
     namespace 'com.barry.mobile_hud_live'
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     defaultConfig {
         applicationId 'com.barry.mobile_hud_live'
-        minSdkVersion 24
-        targetSdkVersion flutter.targetSdkVersion
+        minSdk 24
+        targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
         ndk {
@@ -32,9 +33,9 @@ android {
         }
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
-            useLegacyPackaging true
+            useLegacyPackaging = false
         }
     }
 }
