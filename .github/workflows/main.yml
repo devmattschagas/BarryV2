@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -46,6 +49,26 @@ jobs:
             echo "FLUTTER_BUILD_MODE=release" >> "$GITHUB_ENV"
           fi
 
+      - name: Validate source native libs
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path
+
+          root = Path('apps/barry_mobile_hud_live/android/app/src/main/jniLibs')
+          if not root.exists():
+              raise SystemExit('jniLibs directory not found')
+
+          for so_path in root.rglob('*.so'):
+              if so_path.name.startswith('stub-'):
+                  raise SystemExit(f'Stub library found: {so_path}')
+              with so_path.open('rb') as f:
+                  magic = f.read(4)
+              if magic != bytes.fromhex('7f454c46'):
+                  raise SystemExit(f'Invalid ELF library: {so_path}')
+
+          print('Source native libraries validated')
+          PYCODE
+
       - name: Build APK
         run: |
           cd apps/barry_mobile_hud_live
@@ -60,7 +83,7 @@ jobs:
             exit 1
           fi
 
-          unzip -l "$APK" | grep -E 'lib/(arm64-v8a|armeabi-v7a)/(libzeptoclaw\.so|libbarry_vad_native\.so|libonnxruntime\.so|libbarry_whisper_worker\.so)'
+          scripts/check_native_libs.sh "$APK"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
