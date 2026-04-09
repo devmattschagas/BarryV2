@@ -4,5 +4,5 @@ packages:
   - packages/**
 
 scripts:
-  analyze: melos exec -- flutter analyze
-  test: melos exec -- flutter test
+  analyze: melos exec --concurrency=1 -- flutter analyze
+  test: melos exec --concurrency=1 --dir-exists=test -- flutter test
