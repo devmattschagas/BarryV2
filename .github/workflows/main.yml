@@ -49,7 +49,7 @@ jobs:
       - name: Build APK
         run: |
           cd apps/barry_mobile_hud_live
-          flutter build apk --"$FLUTTER_BUILD_MODE"
+          flutter build apk --"$FLUTTER_BUILD_MODE" --verbose
 
       - name: Validate native libs
         run: |
