@@ -6,8 +6,13 @@ import 'package:barry_core/barry_core.dart';
 import 'package:flutter/material.dart';
 
 Color _withAlphaFromOpacity(Color color, double opacity) {
-  final alpha = (opacity * 255).round().clamp(0, 255) as int;
-  return color.withAlpha(alpha);
+  final rawAlpha = (opacity * 255).round();
+  final clampedAlpha = rawAlpha < 0
+      ? 0
+      : rawAlpha > 255
+          ? 255
+          : rawAlpha;
+  return color.withAlpha(clampedAlpha);
 }
 
 abstract interface class HudStateSource {
