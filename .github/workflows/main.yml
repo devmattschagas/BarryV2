@@ -7,6 +7,8 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -21,6 +23,7 @@ jobs:
       - name: Bootstrap
         run: |
           dart pub global activate melos
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
           melos bootstrap
 
       - name: Analyze
@@ -30,24 +33,36 @@ jobs:
         run: melos run test
 
       - name: Decode keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > apps/barry_mobile_hud_live/android/release.jks
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Select build mode
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "FLUTTER_BUILD_MODE=debug" >> "$GITHUB_ENV"
+          else
+            echo "FLUTTER_BUILD_MODE=release" >> "$GITHUB_ENV"
+          fi
 
       - name: Build APK
         run: |
           cd apps/barry_mobile_hud_live
-          flutter build apk --release
+          flutter build apk --"$FLUTTER_BUILD_MODE"
 
       - name: Validate native libs
         run: |
+          set -euo pipefail
           APK=$(find apps/barry_mobile_hud_live/build/app/outputs/flutter-apk -name '*.apk' | head -n 1)
-          unzip -l "$APK" | rg 'lib/(arm64-v8a|armeabi-v7a)/(libzeptoclaw.so|libbarry_vad_native.so|libonnxruntime.so|libbarry_whisper_worker.so)'
+          if [ -z "${APK:-}" ]; then
+            echo "No APK found after build" >&2
+            exit 1
+          fi
+
+          unzip -l "$APK" | grep -E 'lib/(arm64-v8a|armeabi-v7a)/(libzeptoclaw\.so|libbarry_vad_native\.so|libonnxruntime\.so|libbarry_whisper_worker\.so)'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barry-mobile-hud-live-apk
+          name: barry-mobile-hud-live-apk-${{ env.FLUTTER_BUILD_MODE }}
           path: apps/barry_mobile_hud_live/build/app/outputs/flutter-apk/*.apk
