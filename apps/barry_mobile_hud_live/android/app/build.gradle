@@ -1,17 +1,18 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
+    id 'org.jetbrains.kotlin.android'
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
 android {
     namespace 'com.barry.mobile_hud_live'
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     defaultConfig {
         applicationId 'com.barry.mobile_hud_live'
-        minSdkVersion 24
-        targetSdkVersion flutter.targetSdkVersion
+        minSdk 24
+        targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
         ndk {
@@ -21,20 +22,36 @@ android {
 
     externalNativeBuild {
         cmake {
-            path '../../../packages/barry_native_ffi/native/CMakeLists.txt'
+            path '../../../../packages/barry_native_ffi/native/CMakeLists.txt'
+        }
+    }
+
+    def hasReleaseSigning = file('release.jks').exists()
+        && System.getenv('ANDROID_KEYSTORE_PASSWORD')
+        && System.getenv('ANDROID_KEY_ALIAS')
+        && System.getenv('ANDROID_KEY_PASSWORD')
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file('release.jks')
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
         }
     }
 
-    packagingOptions {
+    packaging {
         jniLibs {
-            useLegacyPackaging true
+            useLegacyPackaging = false
         }
     }
 }

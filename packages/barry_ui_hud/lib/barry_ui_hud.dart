@@ -5,6 +5,16 @@ import 'dart:math' as math;
 import 'package:barry_core/barry_core.dart';
 import 'package:flutter/material.dart';
 
+Color _withAlphaFromOpacity(Color color, double opacity) {
+  final rawAlpha = (opacity * 255).round();
+  final clampedAlpha = rawAlpha < 0
+      ? 0
+      : rawAlpha > 255
+          ? 255
+          : rawAlpha;
+  return color.withAlpha(clampedAlpha);
+}
+
 abstract interface class HudStateSource {
   ValueNotifier<HudUiState> get state;
 }
@@ -103,14 +113,14 @@ class ReactorPainter extends CustomPainter {
 
     final aura = Paint()
       ..shader = RadialGradient(
-        colors: [color.withValues(alpha: 0.32), Colors.transparent],
+        colors: [_withAlphaFromOpacity(color, 0.32), Colors.transparent],
       ).createShader(Rect.fromCircle(center: center, radius: r * 0.95 * pulse));
     canvas.drawCircle(center, r * 0.95 * pulse, aura);
 
     final ring = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
-      ..color = color.withValues(alpha: 0.7);
+      ..color = _withAlphaFromOpacity(color, 0.7);
 
     for (var i = 0; i < 4; i++) {
       final rr = r * (0.26 + i * 0.12);
@@ -121,7 +131,7 @@ class ReactorPainter extends CustomPainter {
     final spoke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2
-      ..color = color.withValues(alpha: 0.45);
+      ..color = _withAlphaFromOpacity(color, 0.45);
 
     final spokePath = Path();
     for (var i = 0; i < 12; i++) {
@@ -135,7 +145,7 @@ class ReactorPainter extends CustomPainter {
 
     final core = Paint()
       ..shader = RadialGradient(
-        colors: [Colors.white.withValues(alpha: 0.92), color, color.withValues(alpha: 0.3)],
+        colors: [_withAlphaFromOpacity(Colors.white, 0.92), color, _withAlphaFromOpacity(color, 0.3)],
       ).createShader(Rect.fromCircle(center: center, radius: r * 0.18));
     canvas.drawCircle(center, r * 0.18, core);
   }
