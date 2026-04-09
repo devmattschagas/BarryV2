@@ -21,6 +21,7 @@ jobs:
       - name: Bootstrap
         run: |
           dart pub global activate melos
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
           melos bootstrap
 
       - name: Analyze
@@ -43,8 +44,14 @@ jobs:
 
       - name: Validate native libs
         run: |
+          set -euo pipefail
           APK=$(find apps/barry_mobile_hud_live/build/app/outputs/flutter-apk -name '*.apk' | head -n 1)
-          unzip -l "$APK" | rg 'lib/(arm64-v8a|armeabi-v7a)/(libzeptoclaw.so|libbarry_vad_native.so|libonnxruntime.so|libbarry_whisper_worker.so)'
+          if [ -z "${APK:-}" ]; then
+            echo "No APK found after build" >&2
+            exit 1
+          fi
+
+          unzip -l "$APK" | grep -E 'lib/(arm64-v8a|armeabi-v7a)/(libzeptoclaw\.so|libbarry_vad_native\.so|libonnxruntime\.so|libbarry_whisper_worker\.so)'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
