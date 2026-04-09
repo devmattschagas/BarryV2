@@ -7,3 +7,6 @@ dependencies:
   barry_core:
     path: ../barry_core
   ffi: ^2.1.2
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
