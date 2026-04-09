@@ -9,3 +9,4 @@ dependencies:
   meta: ^1.12.0
 dev_dependencies:
   test: ^1.25.2
+  flutter_lints: ^4.0.0
