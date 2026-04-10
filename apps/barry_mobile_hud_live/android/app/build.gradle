@@ -37,7 +37,12 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
-            pickFirsts += ['**/libbarry_vad_native.so', '**/libbarry_whisper_worker.so']
+            pickFirsts += [
+                '**/libbarry_vad_native.so',
+                '**/libbarry_whisper_worker.so',
+                '**/libonnxruntime.so',
+                '**/libzeptoclaw.so',
+            ]
         }
     }
 }
