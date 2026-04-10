@@ -128,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 DropdownButtonFormField<InferencePolicy>(
-                  value: _policy,
+                  initialValue: _policy,
                   decoration: _inputDecoration('Roteamento local/remoto'),
                   items: const [
                     DropdownMenuItem(value: InferencePolicy.localOnly, child: Text('Somente IA local')),
@@ -156,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _field(_llmToken, 'Token IA remota', obscure: true),
                 _field(_timeout, 'Timeout (ms)', keyboardType: TextInputType.number),
                 DropdownButtonFormField<String>(
-                  value: _transport,
+                  initialValue: _transport,
                   decoration: _inputDecoration('Transporte'),
                   items: const [
                     DropdownMenuItem(value: 'https', child: Text('HTTPS/HTTP')),

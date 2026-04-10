@@ -28,9 +28,11 @@ class LocalSttService {
       onResult: (SpeechRecognitionResult result) {
         onTranscript(result.recognizedWords, result.finalResult);
       },
-      partialResults: true,
-      cancelOnError: true,
-      listenMode: ListenMode.dictation,
+      listenOptions: SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: ListenMode.dictation,
+      ),
     );
   }
 
