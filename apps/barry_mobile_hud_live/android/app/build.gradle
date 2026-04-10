@@ -26,14 +26,6 @@ android {
         }
     }
 
-    sourceSets {
-        main {
-            jniLibs {
-                excludes += ['**/libbarry_vad_native.so']
-            }
-        }
-    }
-
     buildTypes {
         release {
             signingConfig signingConfigs.debug
@@ -45,6 +37,7 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
+            pickFirsts += ['**/libbarry_vad_native.so']
         }
     }
 }
