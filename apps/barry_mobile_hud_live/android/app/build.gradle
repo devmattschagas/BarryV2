@@ -7,7 +7,14 @@ plugins {
 android {
     namespace 'com.barry.mobile_hud_live'
     compileSdkVersion flutter.compileSdkVersion
-    ndkVersion '27.0.12077973'
+    ndkVersion '28.2.13676358'
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 
     defaultConfig {
         applicationId 'com.barry.mobile_hud_live'
@@ -22,7 +29,15 @@ android {
 
     externalNativeBuild {
         cmake {
-            path '../../../packages/barry_native_ffi/native/CMakeLists.txt'
+            path '../../../../packages/barry_native_ffi/native/CMakeLists.txt'
+        }
+    }
+
+    sourceSets {
+        main {
+            // Avoid bundling placeholder/prebuilt .so files from src/main/jniLibs.
+            // Native libs are provided by externalNativeBuild (CMake) outputs.
+            jniLibs.srcDirs = []
         }
     }
 
@@ -30,6 +45,7 @@ android {
         release {
             signingConfig signingConfigs.debug
             minifyEnabled false
+            shrinkResources false
         }
     }
 
