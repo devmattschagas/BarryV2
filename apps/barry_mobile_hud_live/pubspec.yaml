@@ -28,6 +28,12 @@ dependencies:
     path: ../../packages/barry_platform_bridge
   barry_native_ffi:
     path: ../../packages/barry_native_ffi
+  http: ^1.2.2
+  speech_to_text: ^7.0.0
+  flutter_tts: ^4.2.2
+  shared_preferences: ^2.3.2
+  flutter_secure_storage: ^9.2.2
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
