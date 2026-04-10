@@ -6,13 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
 
 class AppStorage {
-  static const _settingsKey = 'assistant_settings_v2';
+  static const _settingsKey = 'assistant_settings_v3';
   static const _conversationsKey = 'assistant_conversations_v1';
   static const _activeConversationKey = 'assistant_active_conversation_v1';
   static const _profileKey = 'assistant_user_profile_v1';
   static const _llmTokenKey = 'assistant_llm_token';
   static const _sttTokenKey = 'assistant_stt_token';
   static const _ttsTokenKey = 'assistant_tts_token';
+  static const _zeptoRemoteTokenKey = 'assistant_zepto_remote_token';
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -26,6 +27,7 @@ class AppStorage {
       llmApiKey: await _secureStorage.read(key: _llmTokenKey) ?? '',
       sttApiKey: await _secureStorage.read(key: _sttTokenKey) ?? '',
       ttsApiKey: await _secureStorage.read(key: _ttsTokenKey) ?? '',
+      zeptoRemoteApiKey: await _secureStorage.read(key: _zeptoRemoteTokenKey) ?? '',
     );
   }
 
@@ -35,6 +37,7 @@ class AppStorage {
     await _secureStorage.write(key: _llmTokenKey, value: settings.llmApiKey);
     await _secureStorage.write(key: _sttTokenKey, value: settings.sttApiKey);
     await _secureStorage.write(key: _ttsTokenKey, value: settings.ttsApiKey);
+    await _secureStorage.write(key: _zeptoRemoteTokenKey, value: settings.zeptoRemoteApiKey);
   }
 
   Future<List<ConversationThread>> loadConversations() async {

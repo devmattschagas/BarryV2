@@ -71,6 +71,8 @@ class ConversationThread {
       );
 }
 
+enum InferencePolicy { localOnly, hybridPreferLocal, hybridPreferRemote, remoteOnly }
+
 class AssistantSettings {
   const AssistantSettings({
     required this.llmBaseUrl,
@@ -84,6 +86,13 @@ class AssistantSettings {
     required this.timeoutMs,
     required this.transport,
     required this.confirmTranscriptBeforeSend,
+    required this.localModel,
+    required this.localModelEnabled,
+    required this.inferencePolicy,
+    required this.zeptoLocalEnabled,
+    required this.zeptoRemoteEnabled,
+    required this.zeptoRemoteUrl,
+    required this.zeptoRemoteApiKey,
   });
 
   final String llmBaseUrl;
@@ -97,6 +106,13 @@ class AssistantSettings {
   final int timeoutMs;
   final String transport;
   final bool confirmTranscriptBeforeSend;
+  final String localModel;
+  final bool localModelEnabled;
+  final InferencePolicy inferencePolicy;
+  final bool zeptoLocalEnabled;
+  final bool zeptoRemoteEnabled;
+  final String zeptoRemoteUrl;
+  final String zeptoRemoteApiKey;
 
   static const defaults = AssistantSettings(
     llmBaseUrl: '',
@@ -110,6 +126,13 @@ class AssistantSettings {
     timeoutMs: 30000,
     transport: 'https',
     confirmTranscriptBeforeSend: true,
+    localModel: 'gemma-3n-e4b',
+    localModelEnabled: true,
+    inferencePolicy: InferencePolicy.hybridPreferLocal,
+    zeptoLocalEnabled: true,
+    zeptoRemoteEnabled: false,
+    zeptoRemoteUrl: '',
+    zeptoRemoteApiKey: '',
   );
 
   AssistantSettings copyWith({
@@ -124,6 +147,13 @@ class AssistantSettings {
     int? timeoutMs,
     String? transport,
     bool? confirmTranscriptBeforeSend,
+    String? localModel,
+    bool? localModelEnabled,
+    InferencePolicy? inferencePolicy,
+    bool? zeptoLocalEnabled,
+    bool? zeptoRemoteEnabled,
+    String? zeptoRemoteUrl,
+    String? zeptoRemoteApiKey,
   }) {
     return AssistantSettings(
       llmBaseUrl: llmBaseUrl ?? this.llmBaseUrl,
@@ -137,10 +167,17 @@ class AssistantSettings {
       timeoutMs: timeoutMs ?? this.timeoutMs,
       transport: transport ?? this.transport,
       confirmTranscriptBeforeSend: confirmTranscriptBeforeSend ?? this.confirmTranscriptBeforeSend,
+      localModel: localModel ?? this.localModel,
+      localModelEnabled: localModelEnabled ?? this.localModelEnabled,
+      inferencePolicy: inferencePolicy ?? this.inferencePolicy,
+      zeptoLocalEnabled: zeptoLocalEnabled ?? this.zeptoLocalEnabled,
+      zeptoRemoteEnabled: zeptoRemoteEnabled ?? this.zeptoRemoteEnabled,
+      zeptoRemoteUrl: zeptoRemoteUrl ?? this.zeptoRemoteUrl,
+      zeptoRemoteApiKey: zeptoRemoteApiKey ?? this.zeptoRemoteApiKey,
     );
   }
 
-  Map<String, dynamic> toJson({bool includeSecrets = false}) => {
+  Map<String, dynamic> toJson() => {
         'llmBaseUrl': llmBaseUrl,
         'sttBaseUrl': sttBaseUrl,
         'ttsBaseUrl': ttsBaseUrl,
@@ -149,11 +186,12 @@ class AssistantSettings {
         'timeoutMs': timeoutMs,
         'transport': transport,
         'confirmTranscriptBeforeSend': confirmTranscriptBeforeSend,
-        if (includeSecrets) ...{
-          'llmApiKey': llmApiKey,
-          'sttApiKey': sttApiKey,
-          'ttsApiKey': ttsApiKey,
-        },
+        'localModel': localModel,
+        'localModelEnabled': localModelEnabled,
+        'inferencePolicy': inferencePolicy.name,
+        'zeptoLocalEnabled': zeptoLocalEnabled,
+        'zeptoRemoteEnabled': zeptoRemoteEnabled,
+        'zeptoRemoteUrl': zeptoRemoteUrl,
       };
 
   factory AssistantSettings.fromJson(Map<String, dynamic> map) => AssistantSettings(
@@ -168,6 +206,16 @@ class AssistantSettings {
         timeoutMs: (map['timeoutMs'] as num?)?.toInt() ?? 30000,
         transport: map['transport'] as String? ?? 'https',
         confirmTranscriptBeforeSend: map['confirmTranscriptBeforeSend'] as bool? ?? true,
+        localModel: map['localModel'] as String? ?? 'gemma-3n-e4b',
+        localModelEnabled: map['localModelEnabled'] as bool? ?? true,
+        inferencePolicy: InferencePolicy.values.firstWhere(
+          (p) => p.name == map['inferencePolicy'],
+          orElse: () => InferencePolicy.hybridPreferLocal,
+        ),
+        zeptoLocalEnabled: map['zeptoLocalEnabled'] as bool? ?? true,
+        zeptoRemoteEnabled: map['zeptoRemoteEnabled'] as bool? ?? false,
+        zeptoRemoteUrl: map['zeptoRemoteUrl'] as String? ?? '',
+        zeptoRemoteApiKey: map['zeptoRemoteApiKey'] as String? ?? '',
       );
 }
 
@@ -178,11 +226,6 @@ class UserProfile {
   final String avatarPath;
 
   static const defaults = UserProfile(name: 'Operador', avatarPath: '');
-
-  UserProfile copyWith({String? name, String? avatarPath}) => UserProfile(
-        name: name ?? this.name,
-        avatarPath: avatarPath ?? this.avatarPath,
-      );
 
   Map<String, dynamic> toJson() => {'name': name, 'avatarPath': avatarPath};
 
