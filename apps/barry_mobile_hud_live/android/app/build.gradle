@@ -22,7 +22,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path '../../../packages/barry_native_ffi/native/CMakeLists.txt'
+            path '../../../../packages/barry_native_ffi/native/CMakeLists.txt'
         }
     }
 
