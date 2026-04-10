@@ -41,45 +41,86 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Conta do usuário')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            InkWell(
-              onTap: _pickAvatar,
-              borderRadius: BorderRadius.circular(60),
-              child: CircleAvatar(
-                radius: 48,
-                backgroundImage: _avatarPath.isEmpty ? null : FileImage(File(_avatarPath)),
-                child: _avatarPath.isEmpty ? const Icon(Icons.person, size: 42) : null,
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Conta do usuário')),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF040A13), Color(0xFF091321)],
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            const Text('Toque para alterar foto'),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Nome de usuário',
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0x7700E5FF)),
+                gradient: const LinearGradient(colors: [Color(0x3317C6DA), Color(0x221A2740)]),
               ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop(
-                  UserProfile(
-                    name: _nameController.text.trim().isEmpty ? 'Operador' : _nameController.text.trim(),
-                    avatarPath: _avatarPath,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Perfil local', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: InkWell(
+                      onTap: _pickAvatar,
+                      borderRadius: BorderRadius.circular(64),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0x7700E5FF)),
+                          boxShadow: const [BoxShadow(color: Color(0x3300E5FF), blurRadius: 10)],
+                        ),
+                        child: CircleAvatar(
+                          radius: 52,
+                          backgroundImage: _avatarPath.isEmpty ? null : FileImage(File(_avatarPath)),
+                          child: _avatarPath.isEmpty ? const Icon(Icons.person, size: 42) : null,
+                        ),
+                      ),
+                    ),
                   ),
-                );
-              },
-              icon: const Icon(Icons.save),
-              label: const Text('Salvar perfil'),
+                  const SizedBox(height: 10),
+                  const Center(child: Text('Toque para alterar foto')),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      labelText: 'Nome de usuário',
+                      filled: true,
+                      fillColor: const Color(0x22121824),
+                    ),
+                  ),
+                  const Spacer(),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop(
+                          UserProfile(
+                            name: _nameController.text.trim().isEmpty ? 'Operador' : _nameController.text.trim(),
+                            avatarPath: _avatarPath,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.save),
+                      label: const Text('Salvar perfil'),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

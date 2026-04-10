@@ -109,91 +109,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Text('Settings do sistema'),
+      ),
+      body: Stack(
         children: [
-          _section(
-            title: 'Conectividade',
-            child: Column(
-              children: [
-                _field(_llmUrl, 'LLM endpoint'),
-                _field(_sttUrl, 'STT endpoint'),
-                _field(_ttsUrl, 'TTS endpoint'),
-                _field(_memoryUrl, 'Memory/Tools endpoint'),
-                _field(_model, 'Modelo padrão'),
-                _field(_timeout, 'Timeout (ms)', keyboardType: TextInputType.number),
-                DropdownButtonFormField<String>(
-                  value: _transport,
-                  decoration: const InputDecoration(labelText: 'Transporte'),
-                  items: const [
-                    DropdownMenuItem(value: 'https', child: Text('HTTPS/HTTP')),
-                    DropdownMenuItem(value: 'websocket', child: Text('WebSocket')),
-                  ],
-                  onChanged: (value) => setState(() => _transport = value ?? 'https'),
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF050B14), Color(0xFF0A1220)],
                 ),
-              ],
+              ),
             ),
           ),
-          _section(
-            title: 'Segredos',
-            child: Column(
-              children: [
-                _field(_llmToken, 'LLM token', obscure: true),
-                _field(_sttToken, 'STT token', obscure: true),
-                _field(_ttsToken, 'TTS token', obscure: true),
-              ],
-            ),
-          ),
-          _section(
-            title: 'Experiência',
-            child: SwitchListTile(
-              value: _confirmTranscript,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Confirmar transcript antes de enviar'),
-              subtitle: const Text('Mostra modal editável após STT final.'),
-              onChanged: (value) => setState(() => _confirmTranscript = value),
-            ),
-          ),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              FilledButton.icon(
-                onPressed: () => Navigator.of(context).pop(_build()),
-                icon: const Icon(Icons.save),
-                label: const Text('Salvar'),
+              _section(
+                title: 'Conectividade',
+                icon: Icons.network_check,
+                child: Column(
+                  children: [
+                    _field(_llmUrl, 'LLM endpoint'),
+                    _field(_sttUrl, 'STT endpoint'),
+                    _field(_ttsUrl, 'TTS endpoint'),
+                    _field(_memoryUrl, 'Memory/Tools endpoint'),
+                    _field(_model, 'Modelo padrão'),
+                    _field(_timeout, 'Timeout (ms)', keyboardType: TextInputType.number),
+                    DropdownButtonFormField<String>(
+                      value: _transport,
+                      decoration: _inputDecoration('Transporte'),
+                      items: const [
+                        DropdownMenuItem(value: 'https', child: Text('HTTPS/HTTP')),
+                        DropdownMenuItem(value: 'websocket', child: Text('WebSocket')),
+                      ],
+                      onChanged: (value) => setState(() => _transport = value ?? 'https'),
+                    ),
+                  ],
+                ),
               ),
-              OutlinedButton.icon(
-                onPressed: _healthCheck,
-                icon: const Icon(Icons.network_check),
-                label: const Text('Health-check'),
+              _section(
+                title: 'Segredos',
+                icon: Icons.lock,
+                child: Column(
+                  children: [
+                    _field(_llmToken, 'LLM token', obscure: true),
+                    _field(_sttToken, 'STT token', obscure: true),
+                    _field(_ttsToken, 'TTS token', obscure: true),
+                  ],
+                ),
               ),
+              _section(
+                title: 'Experiência',
+                icon: Icons.tune,
+                child: SwitchListTile(
+                  value: _confirmTranscript,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Confirmar transcript antes de enviar'),
+                  subtitle: const Text('Mostra modal editável após STT final.'),
+                  onChanged: (value) => setState(() => _confirmTranscript = value),
+                ),
+              ),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context).pop(_build()),
+                    icon: const Icon(Icons.save),
+                    label: const Text('Salvar'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _healthCheck,
+                    icon: const Icon(Icons.radar),
+                    label: const Text('Health-check'),
+                  ),
+                ],
+              ),
+              if (_healthStatus.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0x2219D7FF),
+                    border: Border.all(color: const Color(0x7700E5FF)),
+                  ),
+                  child: Text(_healthStatus),
+                ),
             ],
           ),
-          if (_healthStatus.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(_healthStatus),
-            ),
         ],
       ),
     );
   }
 
-  Widget _section({required String title, required Widget child}) {
+  Widget _section({required String title, required IconData icon, required Widget child}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0x3300B8D4),
+        gradient: const LinearGradient(colors: [Color(0x3312C8DD), Color(0x22223852)]),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0x6600E5FF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Row(
+            children: [
+              Icon(icon, size: 18, color: const Color(0xFF80DEEA)),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ],
+          ),
           const SizedBox(height: 10),
           child,
         ],
@@ -213,13 +246,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         controller: controller,
         obscureText: obscure,
         keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          filled: true,
-          fillColor: const Color(0x22121824),
-        ),
+        decoration: _inputDecoration(label),
       ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: const Color(0x22121824),
     );
   }
 }
