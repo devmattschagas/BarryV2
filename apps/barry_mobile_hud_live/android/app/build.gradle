@@ -26,6 +26,14 @@ android {
         }
     }
 
+    sourceSets {
+        main {
+            // Avoid bundling placeholder/prebuilt .so files from src/main/jniLibs.
+            // Native libs are provided by externalNativeBuild (CMake) outputs.
+            jniLibs.srcDirs = []
+        }
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.debug
@@ -37,12 +45,6 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
-            pickFirsts += [
-                '**/libbarry_vad_native.so',
-                '**/libbarry_whisper_worker.so',
-                '**/libonnxruntime.so',
-                '**/libzeptoclaw.so',
-            ]
         }
     }
 }
