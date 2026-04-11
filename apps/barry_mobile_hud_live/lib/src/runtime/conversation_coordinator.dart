@@ -109,7 +109,7 @@ class ConversationCoordinator {
     );
   }
 
-  Future<void> submitText(String text) async {
+  Future<void> submitText(String text, {bool muteTts = false}) async {
     final userMessage = ConversationMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       role: 'user',
@@ -141,8 +141,10 @@ class ConversationCoordinator {
 
       _replaceConversation(updated.copyWith(messages: [...updated.messages, assistantMessage]));
 
-      state = AssistantState.speaking;
-      await ttsService.speak(assistantText);
+      if (!muteTts) {
+        state = AssistantState.speaking;
+        await ttsService.speak(assistantText);
+      }
       state = AssistantState.idle;
       lastError = '';
     } on RuntimeFailure catch (failure) {
