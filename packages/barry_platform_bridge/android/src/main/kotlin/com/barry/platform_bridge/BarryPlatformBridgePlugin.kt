@@ -15,8 +15,21 @@ class BarryPlatformBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler
   override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
     when (call.method) {
       "infer" -> {
-        val prompt = call.argument<String>("prompt") ?: ""
-        result.success("[litert-lm-bridge-mock] $prompt")
+        val prompt = call.argument<String>("prompt")?.trim().orEmpty()
+        val model = call.argument<String>("model")?.trim().orEmpty()
+        if (prompt.isEmpty()) {
+          result.error("invalid_prompt", "Prompt vazio.", null)
+          return
+        }
+
+        // Production requires a real on-device LLM runtime (Gemma mobile variant).
+        // This plugin intentionally never emits mock payloads; if runtime isn't wired,
+        // it surfaces explicit unavailability so Flutter can route fallback correctly.
+        result.error(
+          "local_llm_unavailable",
+          "Runtime LLM local não inicializado. Configure Gemma mobile (LiteRT/MediaPipe) no app Android.",
+          mapOf("model" to model)
+        )
       }
       else -> result.notImplemented()
     }

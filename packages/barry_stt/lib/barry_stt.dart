@@ -18,57 +18,44 @@ abstract interface class TranscriptionEngine {
   Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames);
 }
 
-class MockTranscriptionEngine implements TranscriptionEngine {
+class UnsupportedLocalTranscriptionEngine implements TranscriptionEngine {
   @override
-  Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) async* {
-    await for (final _ in pcm16leFrames.take(1)) {
-      yield const TranscriptChunk(text: 'mock partial', isFinal: false, startMs: 0, endMs: 300);
-      yield const TranscriptChunk(text: 'mock final', isFinal: true, startMs: 0, endMs: 600);
-    }
+  Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) {
+    return Stream<TranscriptChunk>.error(UnsupportedError('Local STT deve ser fornecido pela camada de app/plataforma.'));
   }
 }
 
-class NullTranscriptionEngine implements TranscriptionEngine {
-  @override
-  Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) => const Stream.empty();
-}
-
-class LocalTranscriptionEngine implements TranscriptionEngine {
-  @override
-  Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) async* {
-    await for (final _ in pcm16leFrames.take(1)) {
-      yield const TranscriptChunk(text: 'local final', isFinal: true, startMs: 0, endMs: 450);
-    }
-  }
-}
+typedef HttpBatchTranscribe = Future<Map<String, dynamic>> Function(List<int> pcm16);
 
 class RemoteSttAdapter implements TranscriptionEngine {
-  RemoteSttAdapter({required this.endpoint, required this.transport});
+  RemoteSttAdapter({required this.endpoint, required this.transport, this.httpBatchTranscribe});
 
   final Uri endpoint;
   final RemoteTransport transport;
+  final HttpBatchTranscribe? httpBatchTranscribe;
 
   @override
   Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) {
-    if (transport == RemoteTransport.websocket) {
-      return _streamWebsocket(pcm16leFrames);
-    }
-    if (transport == RemoteTransport.webrtc) {
-      return _streamWebrtcPlaceholder(pcm16leFrames);
-    }
-    return _streamHttpBatch(pcm16leFrames);
-  }
-
-  Stream<TranscriptChunk> _streamWebrtcPlaceholder(Stream<List<int>> pcm16leFrames) async* {
-    await for (final _ in pcm16leFrames.take(1)) {
-      yield const TranscriptChunk(text: 'remote webrtc final', isFinal: true, startMs: 0, endMs: 380);
-    }
+    if (transport == RemoteTransport.websocket) return _streamWebsocket(pcm16leFrames);
+    if (transport == RemoteTransport.http) return _streamHttpBatch(pcm16leFrames);
+    return Stream<TranscriptChunk>.error(UnsupportedError('Transporte STT remoto não suportado: $transport'));
   }
 
   Stream<TranscriptChunk> _streamHttpBatch(Stream<List<int>> pcm16leFrames) async* {
-    await for (final _ in pcm16leFrames.take(1)) {
-      yield const TranscriptChunk(text: 'remote http final', isFinal: true, startMs: 0, endMs: 720);
+    if (httpBatchTranscribe == null) {
+      throw UnsupportedError('httpBatchTranscribe não configurado para STT remoto HTTP.');
     }
+
+    final merged = <int>[];
+    await for (final frame in pcm16leFrames) {
+      merged.addAll(frame);
+    }
+    if (merged.isEmpty) return;
+
+    final decoded = await httpBatchTranscribe!(merged);
+    final text = (decoded['text'] as String? ?? '').trim();
+    if (text.isEmpty) return;
+    yield TranscriptChunk(text: text, isFinal: true, startMs: 0, endMs: decoded['end_ms'] as int? ?? 0);
   }
 
   Stream<TranscriptChunk> _streamWebsocket(Stream<List<int>> pcm16leFrames) async* {
@@ -82,8 +69,10 @@ class RemoteSttAdapter implements TranscriptionEngine {
         if (!hasNext) break;
 
         final decoded = jsonDecode(iterator.current as String) as Map<String, dynamic>;
+        final text = (decoded['text'] as String? ?? '').trim();
+        if (text.isEmpty) continue;
         yield TranscriptChunk(
-          text: decoded['text'] as String? ?? '',
+          text: text,
           isFinal: decoded['is_final'] as bool? ?? false,
           startMs: decoded['start_ms'] as int? ?? 0,
           endMs: decoded['end_ms'] as int? ?? 0,
@@ -105,12 +94,8 @@ class HybridTranscriptionEngine implements TranscriptionEngine {
 
   @override
   Stream<TranscriptChunk> streamTranscription(Stream<List<int>> pcm16leFrames) {
-    if (capabilities.hasLocalStt) {
-      return local.streamTranscription(pcm16leFrames);
-    }
-    if (capabilities.hasRemoteStt) {
-      return remote.streamTranscription(pcm16leFrames);
-    }
+    if (capabilities.hasLocalStt) return local.streamTranscription(pcm16leFrames);
+    if (capabilities.hasRemoteStt) return remote.streamTranscription(pcm16leFrames);
     return const Stream.empty();
   }
 }

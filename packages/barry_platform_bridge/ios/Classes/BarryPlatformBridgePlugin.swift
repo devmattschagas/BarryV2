@@ -9,6 +9,16 @@ public class BarryPlatformBridgePlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    if call.method == "infer" { result("[ios-mock]") } else { result(FlutterMethodNotImplemented) }
+    if call.method == "infer" {
+      result(
+        FlutterError(
+          code: "local_llm_unavailable",
+          message: "Runtime LLM local não inicializado no iOS para este build.",
+          details: nil
+        )
+      )
+      return
+    }
+    result(FlutterMethodNotImplemented)
   }
 }

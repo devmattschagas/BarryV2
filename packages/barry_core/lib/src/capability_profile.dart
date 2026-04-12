@@ -33,6 +33,8 @@ class CapabilityProfile {
   final bool hasEmbeddingsRemote;
   final RemoteTransport remoteTransport;
 
+
+
   CapabilityProfile copyWith({
     bool? hasLocalVad,
     bool? hasLocalStt,
@@ -68,7 +70,6 @@ class CapabilityProfile {
       remoteTransport: remoteTransport ?? this.remoteTransport,
     );
   }
-
   static const empty = CapabilityProfile(
     hasLocalVad: false,
     hasLocalStt: false,
@@ -96,6 +97,8 @@ class CapabilityDetector {
     required bool networkHealthy,
     required bool nativeVadLoaded,
     required bool localLlmBridgeAvailable,
+    required bool localSttAvailable,
+    required bool localTtsAvailable,
     required bool remoteQwenConfigured,
     required bool remoteSttConfigured,
     required bool remoteTtsConfigured,
@@ -108,9 +111,9 @@ class CapabilityDetector {
   }) {
     return CapabilityProfile(
       hasLocalVad: nativeVadLoaded,
-      hasLocalStt: nativeVadLoaded,
+      hasLocalStt: localSttAvailable,
       hasRemoteStt: networkHealthy && remoteSttConfigured,
-      hasLocalTts: localLlmBridgeAvailable,
+      hasLocalTts: localTtsAvailable,
       hasRemoteTts: networkHealthy && remoteTtsConfigured,
       hasLocalLlm: localLlmBridgeAvailable,
       hasCloudQwen: networkHealthy && remoteQwenConfigured,

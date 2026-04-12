@@ -1,17 +1,16 @@
-# BarryV2 (Android-first, arquitetura híbrida local + nuvem)
+# BarryV2 (Android-first, local-first + NOMAD opcional)
 
-BarryV2 é uma base Flutter/Android para HUD de voz com roteamento explícito por capability, tolerância a falhas por subsistema e modo degradado granular.
+BarryV2 é um app Flutter com pipeline principal de produção centrada em `ConversationCoordinator` (voz/texto -> ZeptoClaw -> LLM -> TTS), rodando **offline quando o subsistema local está disponível** e com backend remoto opcional compatível com NOMAD/OpenAI/Ollama.
 
-## Princípios de produto (não demo)
-- Híbrido real: não força tudo local nem tudo cloud.
-- Roteamento auditável por subsistema (VAD/STT/TTS/LLM/memória/tools).
-- Degradação por capability (falha parcial não derruba pipeline inteiro).
-- Integrações cloud reais preservadas no desenho: **Qwen2.5 14B**, **OpenClaude/Claude Code OSS**, **ZeptoClaw cloud**, **Vault**, **Claude-Mem**, **PAUL**.
-
-## Stack e responsabilidades
-- **Local-first crítico de latência**: VAD, memória operacional curta, fallback STT/TTS, regras de segurança.
-- **Cloud principal para complexidade**: Qwen2.5 14B, execução remota de tools com ZeptoClaw, memória longa (Vault), otimização/contexto (Claude-Mem/PAUL), orquestração (OpenClaude).
-- **Transporte de mídia remoto (streaming contínuo)**: WebRTC como caminho principal; WebSocket/HTTP apenas quando tecnicamente justificado.
+## Decisões técnicas atuais
+- **Pipeline única de produção**: `ConversationCoordinator` (o `HudCoordinator` permanece somente legado/testes).
+- **LLM local**: bridge Android/iOS não retorna mais payload fake/mock; quando o runtime local não está ligado, retorna erro explícito (`local_llm_unavailable`) para fallback controlado.
+- **Modelo local alvo**: família Gemma mobile. Default de configuração: `gemma-2b-it-q4_0`.
+- **ZeptoClaw**: executor nativo via FFI com allowlist central (`status.read`, `sensors.scan`, `nav.lock`) + cliente remoto opcional.
+- **NOMAD remoto opcional**: campos e health-check de LLM/STT/TTS/Memória/ZeptoClaw expostos em Settings.
+- **VAD**: backend nativo ativo com fallback heurístico no `barry_vad`.
+- **STT/TTS em packages**: removidos placeholders; local é responsabilidade da camada de app/plataforma, remoto é adapter real por transporte.
+- **Memória**: store persistente com embedding determinístico e retrieval semântico local; backend remoto continua opcional.
 
 ## Quickstart
 ```bash
@@ -23,9 +22,19 @@ cd apps/barry_mobile_hud_live
 flutter build apk --release
 ```
 
-## CI
-Workflow valida analyze/test/build, presença de libs nativas no APK e gera build assinado quando secrets existem; se não existirem, mantém build CI unsigned de forma segura.
+## Configuração de execução
+1. Abra **Settings** no app.
+2. Configure (se quiser modo híbrido/remoto):
+   - `LLM endpoint` (OpenAI-compatible/Ollama-compatible, incluindo NOMAD AI Assistant gateway).
+   - `STT endpoint` / `TTS endpoint`.
+   - `Memória endpoint` (RAG/Qdrant gateway).
+   - `ZeptoClaw endpoint`.
+3. Para local-only:
+   - mantenha rede opcional/desligada,
+   - mantenha `IA local habilitada`,
+   - forneça runtime local de Gemma mobile no app Android.
 
-## Estado real de implementação
-- Implementado em código: capability profile granular, router híbrido auditável, STT/TTS híbridos com fallback, VAD robusto com fallback heurístico, memória local com embedding automático, coordinator idempotente e degradado por capability.
-- Ainda abstrato/mockado: integrações efetivas de produção com endpoints de Qwen/OpenClaude/Vault/Claude-Mem/PAUL/ZeptoClaw cloud (ports prontos, wiring real pendente por ambiente).
+## Limitações reais pendentes
+- Integração de inferência Gemma Android ainda depende de wiring final do runtime (LiteRT/MediaPipe/llama.cpp) e assets do modelo no build de app.
+- iOS segue sem runtime LLM local neste branch.
+- Endpoints remotos NOMAD variam por deploy; o app hoje já possui contrato e configuração, mas requer backend ativo.

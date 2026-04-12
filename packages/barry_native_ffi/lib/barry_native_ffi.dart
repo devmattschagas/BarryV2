@@ -1,5 +1,6 @@
 library barry_native_ffi;
 
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
@@ -10,10 +11,9 @@ import 'package:ffi/ffi.dart';
 class NativeLibNames {
   static const zeptoClaw = 'libzeptoclaw.so';
   static const vad = 'libbarry_vad_native.so';
-  static const onnx = 'libonnxruntime.so';
   static const whisperWorker = 'libbarry_whisper_worker.so';
 
-  static const requiredForStartup = [zeptoClaw, vad, onnx, whisperWorker];
+  static const requiredForStartup = [zeptoClaw, vad, whisperWorker];
 }
 
 class NativeStartupReport {
@@ -96,8 +96,19 @@ double _inferVadInIsolate(_VadInferRequest request) {
   }
 }
 
+class ZeptoClawResult {
+  const ZeptoClawResult({required this.command, required this.exitCode, required this.payload});
+
+  final String command;
+  final int exitCode;
+  final Map<String, Object?> payload;
+
+  bool get ok => exitCode == 0;
+}
+
 class ZeptoClawExecutor {
   late final int Function(Pointer<Utf8>, Pointer<Utf8>, int) _executeScript;
+  late final int Function() _healthCheck;
 
   ZeptoClawExecutor() {
     try {
@@ -105,66 +116,27 @@ class ZeptoClawExecutor {
       _executeScript = lib
           .lookup<NativeFunction<Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Int32)>>('zeptoclaw_execute_script')
           .asFunction();
+      _healthCheck = lib.lookup<NativeFunction<Int32 Function()>>('zeptoclaw_health_check').asFunction();
     } catch (_) {
       _executeScript = (_, __, ___) => -1;
+      _healthCheck = () => 0;
     }
   }
 
-  int executeScript({required String command, required String payloadJson, int timeoutMs = 2000}) {
+  bool get isHealthy => _healthCheck() == 1;
+
+  ZeptoClawResult executeScript({required String command, required Map<String, Object?> payload, int timeoutMs = 2000}) {
     if (!CommandPolicies.zeptoClawCloud.canExecute(command)) {
       throw ArgumentError('command_not_allowlisted');
     }
     final cmd = command.toNativeUtf8();
-    final payload = payloadJson.toNativeUtf8();
+    final payloadJson = jsonEncode(payload).toNativeUtf8();
     try {
-      return _executeScript(cmd, payload, timeoutMs);
+      final code = _executeScript(cmd, payloadJson, timeoutMs);
+      return ZeptoClawResult(command: command, exitCode: code, payload: payload);
     } finally {
       calloc.free(cmd);
-      calloc.free(payload);
+      calloc.free(payloadJson);
     }
-  }
-
-  Future<int> executeScriptAsync({required String command, required String payloadJson, int timeoutMs = 2000}) {
-    final request = _ScriptRequest(
-      command: command,
-      payloadJson: payloadJson,
-      timeoutMs: timeoutMs,
-      useProcessLibrary: !Platform.isAndroid,
-    );
-    return Isolate.run(() => _executeScriptInIsolate(request));
-  }
-}
-
-class _ScriptRequest {
-  const _ScriptRequest({
-    required this.command,
-    required this.payloadJson,
-    required this.timeoutMs,
-    required this.useProcessLibrary,
-  });
-
-  final String command;
-  final String payloadJson;
-  final int timeoutMs;
-  final bool useProcessLibrary;
-}
-
-int _executeScriptInIsolate(_ScriptRequest request) {
-  if (!CommandPolicies.zeptoClawCloud.canExecute(request.command)) {
-    throw ArgumentError('command_not_allowlisted');
-  }
-
-  final lib = request.useProcessLibrary ? DynamicLibrary.process() : DynamicLibrary.open(NativeLibNames.zeptoClaw);
-  final execute = lib
-      .lookup<NativeFunction<Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Int32)>>('zeptoclaw_execute_script')
-      .asFunction<int Function(Pointer<Utf8>, Pointer<Utf8>, int)>();
-
-  final cmd = request.command.toNativeUtf8();
-  final payload = request.payloadJson.toNativeUtf8();
-  try {
-    return execute(cmd, payload, request.timeoutMs);
-  } finally {
-    calloc.free(cmd);
-    calloc.free(payload);
   }
 }

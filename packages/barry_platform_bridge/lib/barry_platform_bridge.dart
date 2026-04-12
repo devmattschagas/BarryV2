@@ -3,7 +3,7 @@ library barry_platform_bridge;
 import 'package:flutter/services.dart';
 
 abstract interface class LocalLlmEngine {
-  Future<String> infer(String prompt);
+  Future<String> infer(String prompt, {String? model});
 }
 
 abstract interface class LocalToolCallingEngine {
@@ -24,15 +24,12 @@ class PlatformLocalLlmEngine implements LocalLlmEngine {
   static const _channel = MethodChannel('barry_platform_bridge/litert_lm');
 
   @override
-  Future<String> infer(String prompt) async {
-    try {
-      final output = await _channel.invokeMethod<String>('infer', {'prompt': prompt});
-      return output ?? '';
-    } on MissingPluginException {
-      return '';
-    } on PlatformException {
-      return '';
-    }
+  Future<String> infer(String prompt, {String? model}) async {
+    final output = await _channel.invokeMethod<String>('infer', {
+      'prompt': prompt,
+      if (model != null) 'model': model,
+    });
+    return output ?? '';
   }
 }
 

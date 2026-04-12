@@ -11,6 +11,7 @@ import 'package:barry_vad/barry_vad.dart';
 import 'package:barry_vision/barry_vision.dart';
 import 'package:flutter/foundation.dart';
 
+@Deprecated('Legacy coordinator: produção usa ConversationCoordinator.')
 class HudCoordinator implements HudStateSource {
   HudCoordinator({
     required this.telemetry,
@@ -133,7 +134,7 @@ class HudCoordinator implements HudStateSource {
     if (decision.inferenceMode == ProcessingMode.local && capabilities.hasLocalLlm && !modeController.degraded) {
       state.value = HudUiState.localProcessing;
       try {
-        final response = await localLlmEngine.infer(chunk.text);
+        final response = await localLlmEngine.infer(chunk.text, model: null);
         await memory.put(MemoryItem(id: DateTime.now().microsecondsSinceEpoch.toString(), text: response, embedding: const []));
       } catch (_) {
         _enterDegradedMode('local_llm_failure');
