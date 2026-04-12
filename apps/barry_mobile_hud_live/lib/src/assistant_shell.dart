@@ -38,6 +38,8 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   bool _navOpen = false;
   double _dragProgress = 0;
 
+  InferencePolicy get _selectedMode => _coordinator.settings.inferencePolicy;
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +72,12 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   Future<void> _toggleListening() async {
     if (_isMicMuted) return;
     await _coordinator.toggleListening(confirmTranscript: _confirmTranscript);
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _setExecutionMode(InferencePolicy mode) async {
+    await _coordinator.updateSettings(_coordinator.settings.copyWith(inferencePolicy: mode));
     if (!mounted) return;
     setState(() {});
   }
@@ -147,6 +155,14 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     });
   }
 
+  String _topLeftText(ConversationThread thread) {
+    if (_coordinator.partialTranscript.isNotEmpty) return _coordinator.partialTranscript;
+    for (final message in thread.messages.reversed) {
+      if (message.role == 'user') return message.text;
+    }
+    return 'Olá Barry, tá me ouvindo?';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_coordinator.conversations.isEmpty) {
@@ -185,19 +201,28 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                       child: Column(
                         children: [
-                          _buildTopBar(thread.title),
-                          const SizedBox(height: 12),
+                          _buildTopBar(_topLeftText(thread)),
+                          const SizedBox(height: 10),
+                          _buildModeSelector(),
+                          const SizedBox(height: 8),
                           Expanded(
                             child: Column(
                               children: [
                                 Expanded(
                                   flex: 5,
-                                  child: Center(
-                                    child: _LiveCore(
-                                      state: _coordinator.state,
-                                      animation: _pulseController,
-                                      onTap: _toggleListening,
-                                    ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      const _HudPanel(left: 20, top: 70, title: 'KERNEL.LOAD'),
+                                      const _HudPanel(left: 12, bottom: 92, title: 'SYNC.AA'),
+                                      const _HudPanel(right: 20, top: 74, title: 'BUFFERING'),
+                                      const _HudPanel(right: 18, bottom: 96, title: 'COGNITIVE.ARRAY'),
+                                      _LiveCore(
+                                        state: _coordinator.state,
+                                        animation: _pulseController,
+                                        onTap: _toggleListening,
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 Expanded(
@@ -216,7 +241,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
               ),
               Positioned(
                 left: 0,
-                top: MediaQuery.of(context).size.height * 0.44,
+                top: MediaQuery.of(context).size.height * 0.45,
                 child: GestureDetector(
                   onTap: () => setState(() {
                     _navOpen = !_navOpen;
@@ -231,10 +256,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                       border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
                     ),
                     child: Center(
-                      child: Text(
-                        _navOpen ? '<' : '>',
-                        style: const TextStyle(fontSize: 18, color: Colors.white70),
-                      ),
+                      child: Text(_navOpen ? '<' : '>', style: const TextStyle(fontSize: 18, color: Colors.white70)),
                     ),
                   ),
                 ),
@@ -261,15 +283,15 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     );
   }
 
-  Widget _buildTopBar(String title) {
+  Widget _buildTopBar(String text) {
     return Row(
       children: [
         Expanded(
           child: Text(
-            title,
+            text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white70, letterSpacing: 0.5),
+            style: const TextStyle(color: Colors.white70, letterSpacing: 0.4, fontSize: 18),
           ),
         ),
         _TopIconButton(
@@ -287,50 +309,124 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     );
   }
 
+  Widget _buildModeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          _modeChip('Auto', InferencePolicy.hybridPreferLocal),
+          _modeChip('KidFlash', InferencePolicy.localOnly),
+          _modeChip('Barry', InferencePolicy.remoteOnly),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeChip(String label, InferencePolicy policy) {
+    final selected = _selectedMode == policy;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _setExecutionMode(policy),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF7BC9FF).withValues(alpha: 0.24) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: selected ? const Color(0xFF8FD8FF).withValues(alpha: 0.55) : Colors.transparent),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(color: selected ? Colors.white : Colors.white70, fontWeight: selected ? FontWeight.w600 : FontWeight.w400),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHistoryLayer(ConversationThread thread) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white.withValues(alpha: 0.12), Colors.white.withValues(alpha: 0.03)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [const Color(0xFF8FCDFF).withValues(alpha: 0.18), const Color(0xFF0D2137).withValues(alpha: 0.2)],
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
-      child: ShaderMask(
-        shaderCallback: (bounds) {
-          return const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
-            stops: [0.0, 0.12, 0.88, 1.0],
-          ).createShader(bounds);
-        },
-        blendMode: BlendMode.dstIn,
-        child: ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          itemCount: thread.messages.length,
-          itemBuilder: (context, index) {
-            final m = thread.messages[index];
-            final user = m.role == 'user';
-            return Align(
-              alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 5),
-                constraints: const BoxConstraints(maxWidth: 300),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                decoration: BoxDecoration(
-                  color: user ? const Color(0xFF2E9BFF).withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                ),
-                child: Text(m.text, style: const TextStyle(color: Colors.white70, height: 1.25)),
-              ),
-            );
-          },
-        ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: 12,
+            bottom: 10,
+            child: Icon(Icons.memory_rounded, color: Colors.white.withValues(alpha: 0.06), size: 120),
+          ),
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+              stops: [0, 0.08, 0.9, 1],
+            ).createShader(bounds),
+            blendMode: BlendMode.dstIn,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              itemCount: thread.messages.length,
+              itemBuilder: (context, index) {
+                final m = thread.messages[index];
+                final user = m.role == 'user';
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(
+                    mainAxisAlignment: user ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!user)
+                        Container(
+                          width: 34,
+                          height: 34,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Colors.white.withValues(alpha: 0.88),
+                                const Color(0xFF8ED3FF).withValues(alpha: 0.54),
+                                const Color(0xFF8ED3FF).withValues(alpha: 0.22),
+                              ],
+                            ),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          child: const Icon(Icons.auto_awesome, size: 16, color: Color(0xFF0F2A44)),
+                        ),
+                      Flexible(
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 300),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: user ? const Color(0xFF2E9BFF).withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                          ),
+                          child: Text(m.text, style: const TextStyle(color: Colors.white70, height: 1.25)),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -339,9 +435,9 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 7, 7, 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        color: const Color(0xFF0A1B2B).withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -358,10 +454,16 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
               onSubmitted: (_) => _sendTypedMessage(),
             ),
           ),
-          IconButton(
-            onPressed: _sendTypedMessage,
-            icon: const Icon(Icons.north_east_rounded),
-            color: Colors.white70,
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF85CCFF).withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: IconButton(
+              onPressed: _sendTypedMessage,
+              icon: const Icon(Icons.north_east_rounded),
+              color: Colors.white70,
+            ),
           ),
         ],
       ),
@@ -423,29 +525,31 @@ class _AtmosphericBackground extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: RadialGradient(
-          center: Alignment(0, -0.12),
-          radius: 1.2,
-          colors: [Color(0xFF1A3E66), Color(0xFF07111D), Color(0xFF04080F)],
-          stops: [0.0, 0.46, 1.0],
+          center: Alignment(0, -0.2),
+          radius: 1.25,
+          colors: [Color(0xFF123D6A), Color(0xFF071628), Color(0xFF030914)],
+          stops: [0, 0.48, 1],
         ),
       ),
       child: Stack(
         children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.1,
+              child: CustomPaint(painter: _GridWavePainter()),
+            ),
+          ),
           Positioned(
-            left: -40,
-            right: -40,
-            bottom: 130,
+            left: -80,
+            right: -80,
+            bottom: 220,
             child: Container(
-              height: 220,
+              height: 260,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF64C3FF).withValues(alpha: 0.07),
                 boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF64C3FF).withValues(alpha: 0.13),
-                    blurRadius: 120,
-                    spreadRadius: 20,
-                  ),
+                  BoxShadow(color: const Color(0xFF64C3FF).withValues(alpha: 0.13), blurRadius: 150, spreadRadius: 28),
                 ],
               ),
             ),
@@ -486,37 +590,44 @@ class _LiveCore extends StatelessWidget {
         animation: animation,
         builder: (context, child) {
           final wave = 0.5 + 0.5 * math.sin(animation.value * math.pi * 2);
-          final inner = 104 + (state == AssistantState.processing ? 16 : 10) * wave;
-          final mid = inner + 32 + 9 * (1 - wave);
-          final outer = mid + 30 + 14 * wave;
+          final inner = 124 + (state == AssistantState.processing ? 18 : 12) * wave;
+          final mid = inner + 38 + 10 * (1 - wave);
+          final outer = mid + 38 + 14 * wave;
 
           return SizedBox(
-            width: 320,
-            height: 320,
+            width: 370,
+            height: 370,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                _ring(outer, _accent.withValues(alpha: 0.18)),
-                _ring(mid, _accent.withValues(alpha: 0.26)),
-                _ring(inner, _accent.withValues(alpha: 0.32)),
+                _ring(outer + 24, _accent.withValues(alpha: 0.14), 1.0),
+                _ring(outer, _accent.withValues(alpha: 0.2), 1.4),
+                _ring(mid, _accent.withValues(alpha: 0.26), 1.3),
+                _ring(inner, _accent.withValues(alpha: 0.34), 1.2),
                 Container(
-                  width: 112 + 8 * wave,
-                  height: 112 + 8 * wave,
+                  width: 136 + 10 * wave,
+                  height: 136 + 10 * wave,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
-                      colors: [Colors.white.withValues(alpha: 0.85), _accent.withValues(alpha: 0.45), _accent.withValues(alpha: 0.08)],
+                      colors: [Colors.white.withValues(alpha: 0.88), _accent.withValues(alpha: 0.48), _accent.withValues(alpha: 0.12)],
                     ),
-                    boxShadow: [
-                      BoxShadow(color: _accent.withValues(alpha: 0.45), blurRadius: 44, spreadRadius: 4),
-                    ],
+                    boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.45), blurRadius: 60, spreadRadius: 6)],
                   ),
                 ),
                 Positioned(
-                  bottom: 30,
-                  child: Text(
-                    _stateLabel(state),
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.82), letterSpacing: 1.8, fontSize: 12),
+                  bottom: 22,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: Text(
+                      _stateLabel(state),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.82), letterSpacing: 2, fontSize: 14),
+                    ),
                   ),
                 ),
               ],
@@ -527,14 +638,11 @@ class _LiveCore extends StatelessWidget {
     );
   }
 
-  Widget _ring(double size, Color color) {
+  Widget _ring(double size, Color color, double width) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: color, width: 1.2),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: color, width: width)),
     );
   }
 
@@ -554,6 +662,73 @@ class _LiveCore extends StatelessWidget {
   }
 }
 
+class _HudPanel extends StatelessWidget {
+  const _HudPanel({this.left, this.right, this.top, this.bottom, required this.title});
+
+  final double? left;
+  final double? right;
+  final double? top;
+  final double? bottom;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
+      child: Container(
+        width: 96,
+        height: 46,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Center(child: Icon(Icons.show_chart, size: 14, color: Colors.white54)),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(title, style: const TextStyle(fontSize: 8, color: Colors.white54), overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GridWavePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF89D0FF).withValues(alpha: 0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+    for (double y = 40; y < size.height; y += 44) {
+      final path = Path();
+      path.moveTo(0, y);
+      for (double x = 0; x <= size.width; x += 26) {
+        path.lineTo(x, y + 6 * math.sin((x / size.width) * math.pi * 4));
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _TopIconButton extends StatelessWidget {
   const _TopIconButton({required this.icon, required this.active, required this.onPressed});
 
@@ -567,14 +742,20 @@ class _TopIconButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: onPressed,
       child: Container(
-        width: 34,
-        height: 34,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: active ? 0.14 : 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: active ? 0.42 : 0.22),
+              const Color(0xFF8ED3FF).withValues(alpha: active ? 0.28 : 0.14),
+              const Color(0xFF1A3750).withValues(alpha: 0.2),
+            ],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         ),
-        child: Icon(icon, size: 18, color: Colors.white70),
+        child: Icon(icon, size: 24, color: Colors.white70),
       ),
     );
   }

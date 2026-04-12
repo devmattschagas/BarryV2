@@ -13,14 +13,25 @@ class LocalAiAdapter {
       throw RuntimeFailure(RuntimeErrorType.localUnavailable, 'IA local desabilitada nas configurações.');
     }
 
-    final augmentedPrompt = '[model:${settings.localModel}] $prompt';
-    final output = await _engine.infer(augmentedPrompt);
-    if (output.trim().isEmpty) {
+    final output = await _engine.infer(prompt);
+    final normalized = output.trim();
+    if (normalized.isEmpty) {
       throw RuntimeFailure(
         RuntimeErrorType.localUnavailable,
         'Inferência local indisponível no bridge LiteRT para ${settings.localModel}.',
       );
     }
-    return output.trim();
+
+    final looksMock =
+        normalized.toLowerCase().contains('litert-lm-bridge-mock') ||
+        normalized.toLowerCase().contains('[model:') ||
+        normalized.toLowerCase().contains('mock');
+    if (looksMock) {
+      throw RuntimeFailure(
+        RuntimeErrorType.localUnavailable,
+        'Inferência local retornou payload de mock; fallback necessário.',
+      );
+    }
+    return normalized;
   }
 }
