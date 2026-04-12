@@ -122,11 +122,11 @@ class AssistantSettings {
     llmApiKey: '',
     sttApiKey: '',
     ttsApiKey: '',
-    model: 'gpt-4.1-mini',
+    model: 'qwen2.5:7b-instruct',
     timeoutMs: 30000,
     transport: 'https',
     confirmTranscriptBeforeSend: true,
-    localModel: 'gemma-3n-e4b',
+    localModel: 'gemma-2b-it-q4_0',
     localModelEnabled: true,
     inferencePolicy: InferencePolicy.hybridPreferLocal,
     zeptoLocalEnabled: true,
@@ -182,6 +182,9 @@ class AssistantSettings {
         'sttBaseUrl': sttBaseUrl,
         'ttsBaseUrl': ttsBaseUrl,
         'memoryBaseUrl': memoryBaseUrl,
+        'llmApiKey': llmApiKey,
+        'sttApiKey': sttApiKey,
+        'ttsApiKey': ttsApiKey,
         'model': model,
         'timeoutMs': timeoutMs,
         'transport': transport,
@@ -192,6 +195,7 @@ class AssistantSettings {
         'zeptoLocalEnabled': zeptoLocalEnabled,
         'zeptoRemoteEnabled': zeptoRemoteEnabled,
         'zeptoRemoteUrl': zeptoRemoteUrl,
+        'zeptoRemoteApiKey': zeptoRemoteApiKey,
       };
 
   factory AssistantSettings.fromJson(Map<String, dynamic> map) => AssistantSettings(
@@ -206,7 +210,7 @@ class AssistantSettings {
         timeoutMs: (map['timeoutMs'] as num?)?.toInt() ?? 30000,
         transport: map['transport'] as String? ?? 'https',
         confirmTranscriptBeforeSend: map['confirmTranscriptBeforeSend'] as bool? ?? true,
-        localModel: map['localModel'] as String? ?? 'gemma-3n-e4b',
+        localModel: map['localModel'] as String? ?? 'gemma-2b-it-q4_0',
         localModelEnabled: map['localModelEnabled'] as bool? ?? true,
         inferencePolicy: InferencePolicy.values.firstWhere(
           (p) => p.name == map['inferencePolicy'],

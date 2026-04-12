@@ -19,8 +19,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _llmUrl;
+  late final TextEditingController _sttUrl;
+  late final TextEditingController _ttsUrl;
+  late final TextEditingController _memoryUrl;
   late final TextEditingController _model;
   late final TextEditingController _llmToken;
+  late final TextEditingController _sttToken;
+  late final TextEditingController _ttsToken;
   late final TextEditingController _timeout;
   late final TextEditingController _localModel;
   late final TextEditingController _zeptoRemoteUrl;
@@ -39,8 +44,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _llmUrl = TextEditingController(text: widget.initial.llmBaseUrl);
+    _sttUrl = TextEditingController(text: widget.initial.sttBaseUrl);
+    _ttsUrl = TextEditingController(text: widget.initial.ttsBaseUrl);
+    _memoryUrl = TextEditingController(text: widget.initial.memoryBaseUrl);
     _model = TextEditingController(text: widget.initial.model);
     _llmToken = TextEditingController(text: widget.initial.llmApiKey);
+    _sttToken = TextEditingController(text: widget.initial.sttApiKey);
+    _ttsToken = TextEditingController(text: widget.initial.ttsApiKey);
     _timeout = TextEditingController(text: widget.initial.timeoutMs.toString());
     _localModel = TextEditingController(text: widget.initial.localModel);
     _zeptoRemoteUrl = TextEditingController(text: widget.initial.zeptoRemoteUrl);
@@ -56,29 +66,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    _llmUrl.dispose();
-    _model.dispose();
-    _llmToken.dispose();
-    _timeout.dispose();
-    _localModel.dispose();
-    _zeptoRemoteUrl.dispose();
-    _zeptoRemoteToken.dispose();
+    for (final controller in [_llmUrl, _sttUrl, _ttsUrl, _memoryUrl, _model, _llmToken, _sttToken, _ttsToken, _timeout, _localModel, _zeptoRemoteUrl, _zeptoRemoteToken]) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   AssistantSettings _build() => AssistantSettings(
         llmBaseUrl: _llmUrl.text.trim(),
-        sttBaseUrl: widget.initial.sttBaseUrl,
-        ttsBaseUrl: widget.initial.ttsBaseUrl,
-        memoryBaseUrl: widget.initial.memoryBaseUrl,
+        sttBaseUrl: _sttUrl.text.trim(),
+        ttsBaseUrl: _ttsUrl.text.trim(),
+        memoryBaseUrl: _memoryUrl.text.trim(),
         llmApiKey: _llmToken.text.trim(),
-        sttApiKey: widget.initial.sttApiKey,
-        ttsApiKey: widget.initial.ttsApiKey,
-        model: _model.text.trim().isEmpty ? 'gpt-4.1-mini' : _model.text.trim(),
+        sttApiKey: _sttToken.text.trim(),
+        ttsApiKey: _ttsToken.text.trim(),
+        model: _model.text.trim().isEmpty ? 'qwen2.5:7b-instruct' : _model.text.trim(),
         timeoutMs: int.tryParse(_timeout.text.trim()) ?? 30000,
         transport: _transport,
         confirmTranscriptBeforeSend: _confirmTranscript,
-        localModel: _localModel.text.trim().isEmpty ? 'gemma-3n-e4b' : _localModel.text.trim(),
+        localModel: _localModel.text.trim().isEmpty ? 'gemma-2b-it-q4_0' : _localModel.text.trim(),
         localModelEnabled: _localModelEnabled,
         inferencePolicy: _policy,
         zeptoLocalEnabled: _zeptoLocalEnabled,
@@ -91,17 +97,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = _build();
     final result = <String>[];
 
-    Future<void> ping(String label, String url, String token) async {
+    Future<void> postProbe(String label, String url, String token, Map<String, dynamic> payload) async {
       if (url.isEmpty) {
         result.add('$label: não configurado');
         return;
       }
+      final uri = Uri.tryParse(url);
+      if (uri == null || !(uri.isScheme('http') || uri.isScheme('https') || uri.isScheme('ws') || uri.isScheme('wss'))) {
+        result.add('$label: URL inválida');
+        return;
+      }
+      if (uri.isScheme('ws') || uri.isScheme('wss')) {
+        result.add('$label: WS configurado (probe HTTP ignorado)');
+        return;
+      }
       try {
         final response = await widget.client
-            .get(
-              Uri.parse(url),
-              headers: {if (token.isNotEmpty) 'Authorization': 'Bearer $token'},
-            )
+            .post(uri, headers: {'Content-Type': 'application/json', if (token.isNotEmpty) 'Authorization': 'Bearer $token'}, body: '{}')
             .timeout(Duration(milliseconds: s.timeoutMs));
         result.add('$label: HTTP ${response.statusCode}');
       } catch (e) {
@@ -109,8 +121,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
 
-    await ping('IA remota', s.llmBaseUrl, s.llmApiKey);
-    await ping('ZeptoClaw cloud', s.zeptoRemoteUrl, s.zeptoRemoteApiKey);
+    await postProbe('IA remota', s.llmBaseUrl, s.llmApiKey, {'model': s.model, 'messages': []});
+    await postProbe('STT remoto', s.sttBaseUrl, s.sttApiKey, {'audio_b64': ''});
+    await postProbe('TTS remoto', s.ttsBaseUrl, s.ttsApiKey, {'text': 'ping'});
+    await postProbe('Memória/NOMAD', s.memoryBaseUrl, s.llmApiKey, {'query': 'ping'});
+    await postProbe('ZeptoClaw cloud', s.zeptoRemoteUrl, s.zeptoRemoteApiKey, {'command': 'status.read', 'payload': {}});
 
     if (!mounted) return;
     setState(() => _healthStatus = result.join('\n'));
@@ -137,22 +152,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                   onChanged: (value) => setState(() => _policy = value ?? InferencePolicy.hybridPreferLocal),
                 ),
-                _field(_localModel, 'Modelo local (principal: Gemma 3n E4B)'),
+                _field(_localModel, 'Modelo local Gemma móvel'),
                 SwitchListTile(
                   value: _localModelEnabled,
                   onChanged: (value) => setState(() => _localModelEnabled = value),
-                  title: const Text('Habilitar IA local (LiteRT bridge)'),
+                  title: const Text('Habilitar IA local (Android plugin)'),
                 ),
               ],
             ),
           ),
           _section(
-            title: 'IA remota',
+            title: 'Backends remotos / NOMAD',
             child: Column(
               children: [
-                _field(_llmUrl, 'Endpoint remoto IA (OpenAI-compatible)'),
+                _field(_llmUrl, 'LLM endpoint (OpenAI/Ollama-compatible)'),
                 _field(_model, 'Modelo remoto padrão'),
-                _field(_llmToken, 'Token IA remota', obscure: true),
+                _field(_llmToken, 'Token LLM', obscure: true),
+                _field(_sttUrl, 'STT endpoint'),
+                _field(_sttToken, 'Token STT', obscure: true),
+                _field(_ttsUrl, 'TTS endpoint'),
+                _field(_ttsToken, 'Token TTS', obscure: true),
+                _field(_memoryUrl, 'Memória/RAG endpoint (NOMAD/Qdrant gateway)'),
                 _field(_timeout, 'Timeout (ms)', keyboardType: TextInputType.number),
                 DropdownButtonFormField<String>(
                   initialValue: _transport,
@@ -170,16 +190,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'ZeptoClaw',
             child: Column(
               children: [
-                SwitchListTile(
-                  value: _zeptoLocalEnabled,
-                  onChanged: (value) => setState(() => _zeptoLocalEnabled = value),
-                  title: const Text('ZeptoClaw local/no app'),
-                ),
-                SwitchListTile(
-                  value: _zeptoRemoteEnabled,
-                  onChanged: (value) => setState(() => _zeptoRemoteEnabled = value),
-                  title: const Text('ZeptoClaw remoto/cloud'),
-                ),
+                SwitchListTile(value: _zeptoLocalEnabled, onChanged: (value) => setState(() => _zeptoLocalEnabled = value), title: const Text('ZeptoClaw local/no app')),
+                SwitchListTile(value: _zeptoRemoteEnabled, onChanged: (value) => setState(() => _zeptoRemoteEnabled = value), title: const Text('ZeptoClaw remoto/cloud')),
                 _field(_zeptoRemoteUrl, 'Endpoint ZeptoClaw cloud'),
                 _field(_zeptoRemoteToken, 'Token ZeptoClaw cloud', obscure: true),
               ],
@@ -198,16 +210,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              FilledButton.icon(
-                onPressed: () => Navigator.of(context).pop(_build()),
-                icon: const Icon(Icons.save),
-                label: const Text('Salvar'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _healthCheck,
-                icon: const Icon(Icons.radar),
-                label: const Text('Health-check'),
-              ),
+              FilledButton.icon(onPressed: () => Navigator.of(context).pop(_build()), icon: const Icon(Icons.save), label: const Text('Salvar')),
+              OutlinedButton.icon(onPressed: _healthCheck, icon: const Icon(Icons.radar), label: const Text('Health-check')),
             ],
           ),
           if (_healthStatus.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_healthStatus)),
@@ -216,25 +220,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _section({required String title, required Widget child}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0x3312C8DD), Color(0x22223852)]),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x6600E5FF)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title), const SizedBox(height: 10), child]),
-    );
-  }
+  Widget _section({required String title, required Widget child}) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0x3312C8DD), Color(0x22223852)]),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0x6600E5FF)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title), const SizedBox(height: 10), child]),
+      );
 
-  Widget _field(
-    TextEditingController controller,
-    String label, {
-    bool obscure = false,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
+  Widget _field(TextEditingController controller, String label, {bool obscure = false, TextInputType keyboardType = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(controller: controller, obscureText: obscure, keyboardType: keyboardType, decoration: _inputDecoration(label)),

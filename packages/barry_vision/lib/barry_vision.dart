@@ -14,11 +14,9 @@ abstract interface class BarryVisionGateway {
   Future<List<VisionDetection>> dispatchFrame(List<int> rgbaBytes, int width, int height);
 }
 
-class MockBarryVisionGateway implements BarryVisionGateway {
+class UnsupportedBarryVisionGateway implements BarryVisionGateway {
   @override
-  Future<List<VisionDetection>> dispatchFrame(List<int> rgbaBytes, int width, int height) async {
-    return const [
-      VisionDetection(label: 'mock-target', confidence: 0.92, x: 0.2, y: 0.2, w: 0.3, h: 0.3),
-    ];
+  Future<List<VisionDetection>> dispatchFrame(List<int> rgbaBytes, int width, int height) {
+    throw UnsupportedError('Vision gateway não configurado para esta plataforma/build.');
   }
 }

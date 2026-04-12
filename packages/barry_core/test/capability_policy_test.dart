@@ -7,6 +7,8 @@ void main() {
       networkHealthy: true,
       nativeVadLoaded: true,
       localLlmBridgeAvailable: false,
+      localSttAvailable: true,
+      localTtsAvailable: true,
       remoteQwenConfigured: true,
       remoteSttConfigured: true,
       remoteTtsConfigured: false,
