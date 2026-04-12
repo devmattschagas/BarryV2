@@ -144,14 +144,45 @@ class PersistentMemoryStore implements MemoryStore, SemanticRetriever, ContextAs
   }
 }
 
-class InMemoryMemoryStore extends PersistentMemoryStore {
-  static String _snapshot = '';
+class InMemoryMemoryStore implements MemoryStore, SemanticRetriever, ContextAssembler {
+  InMemoryMemoryStore({EmbeddingProvider? embeddingProvider, this.defaultEmbeddingSource = EmbeddingSource.local})
+      : _embeddingProvider = embeddingProvider ?? DeterministicEmbeddingProvider();
 
-  InMemoryMemoryStore({EmbeddingProvider? embeddingProvider, EmbeddingSource defaultEmbeddingSource = EmbeddingSource.local})
-      : super(
-          loadSnapshot: (() async => _snapshot),
-          saveSnapshot: ((raw) async => _snapshot = raw),
-          embeddingProvider: embeddingProvider,
-          defaultEmbeddingSource: defaultEmbeddingSource,
-        );
+  final List<MemoryItem> _items = [];
+  final EmbeddingProvider _embeddingProvider;
+  final EmbeddingSource defaultEmbeddingSource;
+
+  @override
+  Future<void> put(MemoryItem item) async {
+    final withEmbedding = item.embedding.isNotEmpty
+        ? item
+        : item.copyWith(embedding: _embeddingProvider.embed(item.text), embeddingSource: defaultEmbeddingSource);
+    _items.add(withEmbedding);
+  }
+
+  @override
+  Future<List<MemoryItem>> all() async => List.unmodifiable(_items);
+
+  @override
+  Future<List<MemoryItem>> topK(String query, int k) async {
+    if (k <= 0 || _items.isEmpty) return const [];
+    final q = _embeddingProvider.embed(query);
+    final normalized = _items.where((e) => e.embedding.isNotEmpty).toList(growable: false);
+    final sorted = [...normalized]..sort((a, b) => _cos(b.embedding, q).compareTo(_cos(a.embedding, q)));
+    return sorted.take(k).toList(growable: false);
+  }
+
+  @override
+  Future<String> assemble(String query) async {
+    final best = await topK(query, 6);
+    return best.map((e) => '- ${e.text}').join('\n');
+  }
+
+  double _cos(List<double> a, List<double> b) {
+    double dot = 0;
+    for (var i = 0; i < a.length && i < b.length; i++) {
+      dot += a[i] * b[i];
+    }
+    return dot;
+  }
 }
