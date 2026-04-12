@@ -129,12 +129,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 DropdownButtonFormField<InferencePolicy>(
                   initialValue: _policy,
-                  decoration: _inputDecoration('Roteamento local/remoto'),
+                  decoration: _inputDecoration('Modo de execução'),
                   items: const [
-                    DropdownMenuItem(value: InferencePolicy.localOnly, child: Text('Somente IA local')),
-                    DropdownMenuItem(value: InferencePolicy.hybridPreferLocal, child: Text('Híbrido (preferir local)')),
-                    DropdownMenuItem(value: InferencePolicy.hybridPreferRemote, child: Text('Híbrido (preferir remoto)')),
-                    DropdownMenuItem(value: InferencePolicy.remoteOnly, child: Text('Somente IA remota')),
+                    DropdownMenuItem(value: InferencePolicy.hybridPreferLocal, child: Text('Auto (decide local/remoto)')),
+                    DropdownMenuItem(value: InferencePolicy.localOnly, child: Text('KidFlash (força IA local)')),
+                    DropdownMenuItem(value: InferencePolicy.remoteOnly, child: Text('Barry (força IA remota)')),
                   ],
                   onChanged: (value) => setState(() => _policy = value ?? InferencePolicy.hybridPreferLocal),
                 ),

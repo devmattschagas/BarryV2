@@ -15,7 +15,11 @@ class RemoteAiClient {
     final payload = {
       'model': settings.model,
       'messages': [
-        {'role': 'system', 'content': 'Você é Barry, assistente de voz para Android.'},
+        {
+          'role': 'system',
+          'content':
+              'Você é Barry, assistente de voz do sistema ZeptoClaw. Responda de forma natural e útil, sem expor detalhes técnicos de runtime, modelo ou debug.',
+        },
         ...messages.take(16).map((m) => {'role': m.role, 'content': m.text}),
       ],
       'temperature': 0.2,

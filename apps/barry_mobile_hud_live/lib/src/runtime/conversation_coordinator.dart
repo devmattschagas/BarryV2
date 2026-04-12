@@ -109,7 +109,7 @@ class ConversationCoordinator {
     );
   }
 
-  Future<void> submitText(String text) async {
+  Future<void> submitText(String text, {bool muteTts = false}) async {
     final userMessage = ConversationMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       role: 'user',
@@ -130,7 +130,7 @@ class ConversationCoordinator {
     try {
       final zeptoContext = await _resolveZeptoContext(text);
       final prompt = zeptoContext == null ? text : '$text\n\nContexto ZeptoClaw:\n$zeptoContext';
-      final assistantText = await _resolveModelReply(prompt, updated.messages);
+      final assistantText = _sanitizeAssistantText(await _resolveModelReply(prompt, updated.messages), text);
 
       final assistantMessage = ConversationMessage(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -141,8 +141,10 @@ class ConversationCoordinator {
 
       _replaceConversation(updated.copyWith(messages: [...updated.messages, assistantMessage]));
 
-      state = AssistantState.speaking;
-      await ttsService.speak(assistantText);
+      if (!muteTts) {
+        state = AssistantState.speaking;
+        await ttsService.speak(assistantText);
+      }
       state = AssistantState.idle;
       lastError = '';
     } on RuntimeFailure catch (failure) {
@@ -173,6 +175,21 @@ class ConversationCoordinator {
           return localAi.infer(prompt: prompt, settings: settings);
         }
     }
+  }
+
+  String _sanitizeAssistantText(String raw, String prompt) {
+    var sanitized = raw
+        .replaceAll(RegExp(r'\[litert-lm-bridge-mock\]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\[model:[^\]]+\]', caseSensitive: false), '')
+        .trim();
+    if (sanitized.isEmpty) return 'Barry aqui. Não consegui concluir uma resposta útil agora, tente novamente em instantes.';
+
+    final promptNormalized = prompt.trim().toLowerCase();
+    final sanitizedNormalized = sanitized.trim().toLowerCase();
+    if (promptNormalized.isNotEmpty && sanitizedNormalized == promptNormalized) {
+      return 'Entendi você. Posso te ajudar com mais detalhes se você me disser o objetivo exato.';
+    }
+    return sanitized;
   }
 
   Future<String?> _resolveZeptoContext(String text) async {
