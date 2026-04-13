@@ -40,6 +40,11 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
 
   InferencePolicy get _selectedMode => _coordinator.settings.inferencePolicy;
 
+  void _onCoordinatorChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +58,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
       zeptoRemote: ZeptoClawRemoteClient(NetworkClient(http.Client())),
     );
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))..repeat();
+    _coordinator.addListener(_onCoordinatorChanged);
     _bootstrap();
   }
 
@@ -64,6 +70,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
 
   @override
   void dispose() {
+    _coordinator.removeListener(_onCoordinatorChanged);
     _composerController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -101,12 +108,11 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   }
 
   Future<void> _sendTypedMessage() async {
+    if (_coordinator.isBusy || _coordinator.state == AssistantState.listening) return;
     final text = _composerController.text.trim();
     if (text.isEmpty) return;
     _composerController.clear();
     await _coordinator.submitText(text, muteTts: _isVoiceMuted);
-    if (!mounted) return;
-    setState(() {});
   }
 
   Future<void> _createConversation() async {
@@ -156,11 +162,16 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   }
 
   String _topLeftText(ConversationThread thread) {
-    if (_coordinator.partialTranscript.isNotEmpty) return _coordinator.partialTranscript;
-    for (final message in thread.messages.reversed) {
-      if (message.role == 'user') return message.text;
+    if (_coordinator.state == AssistantState.listening) {
+      if (_coordinator.partialTranscript.trim().isNotEmpty) {
+        return 'Ouvindo: ${_coordinator.partialTranscript.trim()}';
+      }
+      return 'Ouvindo…';
     }
-    return 'Olá Barry, tá me ouvindo?';
+    if (_coordinator.state == AssistantState.processing) return 'Processando solicitação…';
+    if (_coordinator.state == AssistantState.speaking) return 'Barry respondendo…';
+    if (_coordinator.state == AssistantState.error) return 'Atenção: ocorreu um erro';
+    return thread.title;
   }
 
   @override
@@ -460,7 +471,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
               borderRadius: BorderRadius.circular(16),
             ),
             child: IconButton(
-              onPressed: _sendTypedMessage,
+              onPressed: (_coordinator.isBusy || _coordinator.state == AssistantState.listening) ? null : _sendTypedMessage,
               icon: const Icon(Icons.north_east_rounded),
               color: Colors.white70,
             ),
