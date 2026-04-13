@@ -111,9 +111,9 @@ void main() {
     );
     await _pumpUi(tester, duration: const Duration(milliseconds: 600));
 
-    await tester.tap(find.text('>'));
+    await tester.tap(find.byKey(const Key('shell_nav_toggle')));
     await _pumpUi(tester);
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.byKey(const Key('shell_nav_settings')));
     await _pumpUi(tester);
 
     expect(find.text('Settings do sistema'), findsOneWidget);
@@ -135,9 +135,9 @@ void main() {
     );
     await _pumpUi(tester, duration: const Duration(milliseconds: 600));
 
-    await tester.tap(find.text('>'));
+    await tester.tap(find.byKey(const Key('shell_nav_toggle')));
     await _pumpUi(tester);
-    await tester.tap(find.text('Conta do usuário'));
+    await tester.tap(find.byKey(const Key('shell_nav_account')));
     await _pumpUi(tester);
 
     expect(find.text('Conta do usuário'), findsOneWidget);

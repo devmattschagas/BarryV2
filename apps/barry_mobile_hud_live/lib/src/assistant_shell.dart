@@ -274,6 +274,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                     _dragProgress = _navOpen ? 1 : 0;
                   }),
                   child: Container(
+                    key: const Key('shell_nav_toggle'),
                     width: 24,
                     height: 80,
                     decoration: BoxDecoration(
@@ -516,8 +517,8 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
             ),
             const SizedBox(height: 8),
             _navAction(icon: Icons.add, label: 'Nova conversa', onTap: _createConversation),
-            _navAction(icon: Icons.tune, label: 'Settings', onTap: _openSettings),
-            _navAction(icon: Icons.account_circle, label: 'Conta do usuário', onTap: _openAccount),
+            _navAction(key: const Key('shell_nav_settings'), icon: Icons.tune, label: 'Settings', onTap: _openSettings),
+            _navAction(key: const Key('shell_nav_account'), icon: Icons.account_circle, label: 'Conta do usuário', onTap: _openAccount),
             const Divider(height: 28),
             ..._coordinator.conversations.map(
               (c) => ListTile(
@@ -533,8 +534,9 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     );
   }
 
-  Widget _navAction({required IconData icon, required String label, required Future<void> Function() onTap}) {
+  Widget _navAction({Key? key, required IconData icon, required String label, required Future<void> Function() onTap}) {
     return ListTile(
+      key: key,
       dense: true,
       leading: Icon(icon, color: Colors.white70),
       title: Text(label),
