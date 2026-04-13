@@ -23,9 +23,9 @@ class ConversationCoordinator {
     required this.zeptoRemote,
   });
 
-  final AppStorage storage;
-  final LocalSttService sttService;
-  final LocalTtsService ttsService;
+  final StorageGateway storage;
+  final SttService sttService;
+  final TtsService ttsService;
   final LocalAiAdapter localAi;
   final RemoteAiClient remoteAi;
   final ZeptoClawLocalExecutor zeptoLocal;
@@ -39,6 +39,7 @@ class ConversationCoordinator {
   String? activeConversationId;
   UserProfile profile = UserProfile.defaults;
   bool _isSubmitting = false;
+  bool _isHandlingFinalTranscript = false;
   final Set<VoidCallback> _listeners = <VoidCallback>{};
 
   bool get isBusy => _isSubmitting || state == AssistantState.processing || state == AssistantState.speaking;
@@ -101,6 +102,7 @@ class ConversationCoordinator {
       await sttService.stop();
       state = AssistantState.idle;
       partialTranscript = '';
+      _isHandlingFinalTranscript = false;
       _notifyListeners();
       return;
     }
@@ -112,6 +114,7 @@ class ConversationCoordinator {
     state = AssistantState.listening;
     partialTranscript = '';
     lastError = '';
+    _isHandlingFinalTranscript = false;
     _notifyListeners();
 
     try {
@@ -120,22 +123,27 @@ class ConversationCoordinator {
           partialTranscript = partial;
           _notifyListeners();
           if (!isFinal || partial.trim().isEmpty) return;
-          if (_isSubmitting || state != AssistantState.listening) return;
+          if (_isSubmitting || _isHandlingFinalTranscript || state != AssistantState.listening) return;
+          _isHandlingFinalTranscript = true;
 
-          await sttService.stop();
+          try {
+            await sttService.stop();
 
-          if (settings.confirmTranscriptBeforeSend) {
-            final confirmed = await confirmTranscript(partial);
-            if (confirmed == null || confirmed.trim().isEmpty) {
-              state = AssistantState.idle;
-              partialTranscript = '';
-              _notifyListeners();
+            if (settings.confirmTranscriptBeforeSend) {
+              final confirmed = await confirmTranscript(partial);
+              if (confirmed == null || confirmed.trim().isEmpty) {
+                state = AssistantState.idle;
+                partialTranscript = '';
+                _notifyListeners();
+                return;
+              }
+              await submitText(confirmed.trim());
               return;
             }
-            await submitText(confirmed.trim());
-            return;
+            await submitText(partial.trim());
+          } finally {
+            _isHandlingFinalTranscript = false;
           }
-          await submitText(partial.trim());
         },
         onError: (failure) {
           state = AssistantState.error;
