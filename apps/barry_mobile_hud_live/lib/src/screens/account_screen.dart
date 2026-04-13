@@ -104,7 +104,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   const Spacer(),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
+                    child: FilledButton(
                       onPressed: () {
                         Navigator.of(context).pop(
                           UserProfile(
@@ -113,8 +113,7 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.save),
-                      label: const Text('Salvar perfil'),
+                      child: const Text('Salvar perfil'),
                     ),
                   ),
                 ],

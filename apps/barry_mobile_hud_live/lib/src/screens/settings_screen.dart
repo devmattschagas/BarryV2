@@ -242,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              FilledButton.icon(onPressed: () => Navigator.of(context).pop(_build()), icon: const Icon(Icons.save), label: const Text('Salvar')),
+              FilledButton(onPressed: () => Navigator.of(context).pop(_build()), child: const Text('Salvar')),
               OutlinedButton.icon(onPressed: _healthCheck, icon: const Icon(Icons.radar), label: const Text('Health-check')),
             ],
           ),
