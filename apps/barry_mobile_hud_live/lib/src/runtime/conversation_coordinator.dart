@@ -23,9 +23,9 @@ class ConversationCoordinator {
     required this.zeptoRemote,
   });
 
-  final StorageGateway storage;
-  final SttService sttService;
-  final TtsService ttsService;
+  final AppStorage storage;
+  final LocalSttService sttService;
+  final LocalTtsService ttsService;
   final LocalAiAdapter localAi;
   final RemoteAiClient remoteAi;
   final ZeptoClawLocalExecutor zeptoLocal;
