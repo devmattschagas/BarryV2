@@ -93,11 +93,6 @@ ConversationCoordinator _buildCoordinator(AppStorage storage) {
   );
 }
 
-Future<void> _pumpUi(WidgetTester tester, {Duration duration = const Duration(milliseconds: 350)}) async {
-  await tester.pump();
-  await tester.pump(duration);
-}
-
 void main() {
   testWidgets('abre Settings a partir do shell e salva sem crash', (tester) async {
     final storage = _MemoryStorage();
@@ -107,20 +102,22 @@ void main() {
         storage: storage,
         initialSettings: AssistantSettings.defaults,
         coordinatorBuilder: _buildCoordinator,
+        enableCorePulseAnimation: false,
       ),
     );
-    await _pumpUi(tester, duration: const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('shell_nav_toggle')));
-    await _pumpUi(tester);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('shell_side_nav')));
     await tester.tap(find.byKey(const Key('shell_nav_settings')));
-    await _pumpUi(tester);
+    await tester.pumpAndSettle();
 
     expect(find.text('Settings do sistema'), findsOneWidget);
     final settingsSaveButton = find.widgetWithText(FilledButton, 'Salvar');
     await tester.ensureVisible(settingsSaveButton);
     await tester.tap(settingsSaveButton);
-    await _pumpUi(tester);
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('shell_nav_toggle')), findsOneWidget);
     expect(find.text('Settings do sistema'), findsNothing);
@@ -134,14 +131,16 @@ void main() {
         storage: storage,
         initialSettings: AssistantSettings.defaults,
         coordinatorBuilder: _buildCoordinator,
+        enableCorePulseAnimation: false,
       ),
     );
-    await _pumpUi(tester, duration: const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('shell_nav_toggle')));
-    await _pumpUi(tester);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('shell_side_nav')));
     await tester.tap(find.byKey(const Key('shell_nav_account')));
-    await _pumpUi(tester);
+    await tester.pumpAndSettle();
 
     expect(find.text('Conta do usuário'), findsOneWidget);
     final nameField = find.widgetWithText(TextField, 'Nome de usuário');
@@ -150,7 +149,7 @@ void main() {
     final saveProfileButton = find.widgetWithText(FilledButton, 'Salvar perfil');
     await tester.ensureVisible(saveProfileButton);
     await tester.tap(saveProfileButton);
-    await _pumpUi(tester);
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('shell_nav_toggle')), findsOneWidget);
     expect(find.text('Conta do usuário'), findsNothing);

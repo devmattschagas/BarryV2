@@ -24,11 +24,13 @@ class BarryAssistantShell extends StatefulWidget {
     required this.storage,
     required this.initialSettings,
     this.coordinatorBuilder,
+    this.enableCorePulseAnimation = true,
   });
 
   final AppStorage storage;
   final AssistantSettings initialSettings;
   final ConversationCoordinator Function(AppStorage storage)? coordinatorBuilder;
+  final bool enableCorePulseAnimation;
 
   @override
   State<BarryAssistantShell> createState() => _BarryAssistantShellState();
@@ -65,7 +67,10 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
             zeptoLocal: ZeptoClawLocalExecutor(),
             zeptoRemote: ZeptoClawRemoteClient(NetworkClient(http.Client())),
           );
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))..repeat();
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800));
+    if (widget.enableCorePulseAnimation) {
+      _pulseController.repeat();
+    }
     _coordinator.addListener(_onCoordinatorChanged);
     _bootstrap();
   }
@@ -272,6 +277,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                 left: 0,
                 top: MediaQuery.of(context).size.height * 0.45,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() {
                     _navOpen = !_navOpen;
                     _dragProgress = _navOpen ? 1 : 0;
@@ -502,6 +508,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
 
   Widget _buildSideNavigation() {
     return Container(
+      key: const Key('shell_side_nav'),
       decoration: BoxDecoration(
         color: const Color(0xFF0A1624).withValues(alpha: 0.96),
         border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
