@@ -1,20 +1,14 @@
 import 'package:barry_mobile_hud_live/src/models.dart';
 import 'package:barry_mobile_hud_live/src/runtime/conversation_coordinator.dart';
 import 'package:barry_mobile_hud_live/src/runtime/errors.dart';
-import 'package:barry_mobile_hud_live/src/runtime/local_ai_adapter.dart';
-import 'package:barry_mobile_hud_live/src/runtime/network_client.dart';
 import 'package:barry_mobile_hud_live/src/runtime/remote_ai_client.dart';
 import 'package:barry_mobile_hud_live/src/runtime/stt_local_service.dart';
 import 'package:barry_mobile_hud_live/src/runtime/tts_local_service.dart';
 import 'package:barry_mobile_hud_live/src/runtime/zeptoclaw_services.dart';
 import 'package:barry_mobile_hud_live/src/storage.dart';
-import 'package:barry_platform_bridge/barry_platform_bridge.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:http/http.dart' as http;
-import 'package:speech_to_text/speech_to_text.dart';
 
-class _MemoryStorage extends AppStorage {
+class _MemoryStorage implements AppStorage {
   AssistantSettings _settings = AssistantSettings.defaults;
   List<ConversationThread> _conversations = <ConversationThread>[];
   String? _activeId;
@@ -53,9 +47,7 @@ class _MemoryStorage extends AppStorage {
   }
 }
 
-class _FakeStt extends LocalSttService {
-  _FakeStt() : super(SpeechToText());
-
+class _FakeStt implements LocalSttService {
   bool throwsOnStart = false;
   bool emitFinalTwice = true;
   int stopCalls = 0;
@@ -80,9 +72,7 @@ class _FakeStt extends LocalSttService {
   }
 }
 
-class _FakeTts extends LocalTtsService {
-  _FakeTts() : super(FlutterTts());
-
+class _FakeTts implements LocalTtsService {
   int stopCalls = 0;
 
   @override
@@ -94,34 +84,28 @@ class _FakeTts extends LocalTtsService {
   }
 }
 
-class _FakeEngine implements LocalLlmEngine {
+class _FakeLocalAi implements LocalAiAdapter {
   int calls = 0;
 
   @override
-  Future<String> infer(String prompt, {String? model}) async {
+  Future<String> infer({required String prompt, required AssistantSettings settings}) async {
     calls += 1;
     return 'ok';
   }
 }
 
-class _FakeRemote extends RemoteAiClient {
-  _FakeRemote() : super(NetworkClient(http.Client()));
-
+class _FakeRemote implements RemoteAiClient {
   @override
   Future<String> infer({required List<ConversationMessage> messages, required AssistantSettings settings}) async =>
       'ok remoto';
 }
 
-class _FakeZeptoLocal extends ZeptoClawLocalExecutor {
-  _FakeZeptoLocal();
-
+class _FakeZeptoLocal implements ZeptoClawLocalExecutor {
   @override
   Future<String?> tryExecute(String prompt, AssistantSettings settings) async => null;
 }
 
-class _FakeZeptoRemote extends ZeptoClawRemoteClient {
-  _FakeZeptoRemote() : super(NetworkClient(http.Client()));
-
+class _FakeZeptoRemote implements ZeptoClawRemoteClient {
   @override
   Future<String?> tryExecute(String prompt, AssistantSettings settings) async => null;
 }
@@ -129,17 +113,17 @@ class _FakeZeptoRemote extends ZeptoClawRemoteClient {
 ConversationCoordinator _buildCoordinator({
   required _MemoryStorage storage,
   _FakeStt? stt,
-  _FakeEngine? engine,
+  _FakeLocalAi? localAi,
   _FakeTts? tts,
 }) {
   final fakeStt = stt ?? _FakeStt();
-  final fakeEngine = engine ?? _FakeEngine();
+  final fakeLocalAi = localAi ?? _FakeLocalAi();
   final fakeTts = tts ?? _FakeTts();
   return ConversationCoordinator(
     storage: storage,
     sttService: fakeStt,
     ttsService: fakeTts,
-    localAi: LocalAiAdapter(engine: fakeEngine),
+    localAi: fakeLocalAi,
     remoteAi: _FakeRemote(),
     zeptoLocal: _FakeZeptoLocal(),
     zeptoRemote: _FakeZeptoRemote(),
@@ -215,8 +199,8 @@ void main() {
   test('toggleListening não envia transcript final duplicado', () async {
     final storage = _MemoryStorage();
     final stt = _FakeStt();
-    final engine = _FakeEngine();
-    final coordinator = _buildCoordinator(storage: storage, stt: stt, engine: engine);
+    final localAi = _FakeLocalAi();
+    final coordinator = _buildCoordinator(storage: storage, stt: stt, localAi: localAi);
     await coordinator.hydrate();
     await coordinator.updateSettings(
       coordinator.settings.copyWith(confirmTranscriptBeforeSend: false, inferencePolicy: InferencePolicy.localOnly),
@@ -227,7 +211,7 @@ void main() {
 
     final userMessages = coordinator.activeConversation.messages.where((m) => m.role == 'user').length;
     expect(userMessages, 1);
-    expect(engine.calls, 1);
+    expect(localAi.calls, 1);
     expect(stt.stopCalls, 1);
   });
 
