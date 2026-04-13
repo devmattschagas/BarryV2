@@ -210,15 +210,6 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
           child: Stack(
             children: [
               const _AtmosphericBackground(),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                left: -panelWidth + (panelWidth * navProgress),
-                top: 0,
-                bottom: 0,
-                width: panelWidth,
-                child: _buildSideNavigation(),
-              ),
               Positioned.fill(
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
@@ -264,6 +255,15 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                     ),
                   ),
                 ),
+              ),
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                left: -panelWidth + (panelWidth * navProgress),
+                top: 0,
+                bottom: 0,
+                width: panelWidth,
+                child: _buildSideNavigation(),
               ),
               Positioned(
                 left: 0,
