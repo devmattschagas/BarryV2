@@ -1,6 +1,7 @@
 import 'package:barry_mobile_hud_live/src/models.dart';
 import 'package:barry_mobile_hud_live/src/runtime/conversation_coordinator.dart';
 import 'package:barry_mobile_hud_live/src/runtime/errors.dart';
+import 'package:barry_mobile_hud_live/src/runtime/local_ai_adapter.dart';
 import 'package:barry_mobile_hud_live/src/runtime/remote_ai_client.dart';
 import 'package:barry_mobile_hud_live/src/runtime/stt_local_service.dart';
 import 'package:barry_mobile_hud_live/src/runtime/tts_local_service.dart';
