@@ -211,9 +211,11 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
             children: [
               const _AtmosphericBackground(),
               Positioned.fill(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  child: SafeArea(
+                child: IgnorePointer(
+                  ignoring: navProgress > 0.01,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    child: SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                       child: Column(
@@ -252,6 +254,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                           ),
                         ],
                       ),
+                    ),
                     ),
                   ),
                 ),

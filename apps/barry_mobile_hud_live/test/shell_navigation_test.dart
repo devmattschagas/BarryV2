@@ -117,10 +117,13 @@ void main() {
     await _pumpUi(tester);
 
     expect(find.text('Settings do sistema'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    final settingsSaveButton = find.widgetWithText(FilledButton, 'Salvar');
+    await tester.ensureVisible(settingsSaveButton);
+    await tester.tap(settingsSaveButton);
     await _pumpUi(tester);
 
-    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.byKey(const Key('shell_nav_toggle')), findsOneWidget);
+    expect(find.text('Settings do sistema'), findsNothing);
   });
 
   testWidgets('abre Conta do usuário a partir do shell e salva sem crash', (tester) async {
@@ -141,10 +144,15 @@ void main() {
     await _pumpUi(tester);
 
     expect(find.text('Conta do usuário'), findsOneWidget);
-    await tester.enterText(find.widgetWithText(TextField, 'Nome de usuário'), 'Operador Teste');
-    await tester.tap(find.widgetWithText(FilledButton, 'Salvar perfil'));
+    final nameField = find.widgetWithText(TextField, 'Nome de usuário');
+    await tester.ensureVisible(nameField);
+    await tester.enterText(nameField, 'Operador Teste');
+    final saveProfileButton = find.widgetWithText(FilledButton, 'Salvar perfil');
+    await tester.ensureVisible(saveProfileButton);
+    await tester.tap(saveProfileButton);
     await _pumpUi(tester);
 
-    expect(find.text('Conversa inicial'), findsOneWidget);
+    expect(find.byKey(const Key('shell_nav_toggle')), findsOneWidget);
+    expect(find.text('Conta do usuário'), findsNothing);
   });
 }
