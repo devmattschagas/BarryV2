@@ -19,10 +19,16 @@ import 'screens/settings_screen.dart';
 import 'storage.dart';
 
 class BarryAssistantShell extends StatefulWidget {
-  const BarryAssistantShell({super.key, required this.storage, required this.initialSettings});
+  const BarryAssistantShell({
+    super.key,
+    required this.storage,
+    required this.initialSettings,
+    this.coordinatorBuilder,
+  });
 
   final AppStorage storage;
   final AssistantSettings initialSettings;
+  final ConversationCoordinator Function(AppStorage storage)? coordinatorBuilder;
 
   @override
   State<BarryAssistantShell> createState() => _BarryAssistantShellState();
@@ -48,15 +54,17 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   @override
   void initState() {
     super.initState();
-    _coordinator = ConversationCoordinator(
-      storage: widget.storage,
-      sttService: LocalSttService(SpeechToText()),
-      ttsService: LocalTtsService(FlutterTts()),
-      localAi: LocalAiAdapter(),
-      remoteAi: RemoteAiClient(NetworkClient(http.Client())),
-      zeptoLocal: ZeptoClawLocalExecutor(),
-      zeptoRemote: ZeptoClawRemoteClient(NetworkClient(http.Client())),
-    );
+    _coordinator = (widget.coordinatorBuilder != null)
+        ? widget.coordinatorBuilder!(widget.storage)
+        : ConversationCoordinator(
+            storage: widget.storage,
+            sttService: LocalSttService(SpeechToText()),
+            ttsService: LocalTtsService(FlutterTts()),
+            localAi: LocalAiAdapter(),
+            remoteAi: RemoteAiClient(NetworkClient(http.Client())),
+            zeptoLocal: ZeptoClawLocalExecutor(),
+            zeptoRemote: ZeptoClawRemoteClient(NetworkClient(http.Client())),
+          );
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))..repeat();
     _coordinator.addListener(_onCoordinatorChanged);
     _bootstrap();
@@ -128,6 +136,10 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   }
 
   Future<void> _openSettings() async {
+    setState(() {
+      _navOpen = false;
+      _dragProgress = 0;
+    });
     final updated = await Navigator.of(context).push<AssistantSettings>(
       MaterialPageRoute(builder: (_) => SettingsScreen(initial: _coordinator.settings, client: http.Client())),
     );
@@ -138,6 +150,10 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   }
 
   Future<void> _openAccount() async {
+    setState(() {
+      _navOpen = false;
+      _dragProgress = 0;
+    });
     final updated = await Navigator.of(context).push<UserProfile>(
       MaterialPageRoute(builder: (_) => AccountScreen(initialProfile: _coordinator.profile)),
     );
@@ -206,7 +222,6 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
               Positioned.fill(
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
-                  transform: Matrix4.translationValues(panelWidth * navProgress * 0.08, 0, 0),
                   child: SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -548,21 +563,6 @@ class _AtmosphericBackground extends StatelessWidget {
             child: Opacity(
               opacity: 0.1,
               child: CustomPaint(painter: _GridWavePainter()),
-            ),
-          ),
-          Positioned(
-            left: -80,
-            right: -80,
-            bottom: 220,
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF64C3FF).withValues(alpha: 0.07),
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFF64C3FF).withValues(alpha: 0.13), blurRadius: 150, spreadRadius: 28),
-                ],
-              ),
             ),
           ),
         ],

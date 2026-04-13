@@ -45,6 +45,12 @@ jobs:
       - name: Test
         run: melos run test
 
+      - name: Guardrails (no runtime stubs)
+        run: |
+          set -euo pipefail
+          ! rg -n "litert-lm-bridge-mock|Runtime LLM local não inicializado" packages/barry_platform_bridge apps/barry_mobile_hud_live
+          ! rg -n "stub" packages/barry_native_ffi/native/zeptoclaw_native.c
+
       - name: Decode keystore
         if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |

@@ -40,6 +40,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _healthStatus = '';
 
+  static const Color _bg = Color(0xFF050C16);
+
   @override
   void initState() {
     super.initState();
@@ -84,7 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         timeoutMs: int.tryParse(_timeout.text.trim()) ?? 30000,
         transport: _transport,
         confirmTranscriptBeforeSend: _confirmTranscript,
-        localModel: _localModel.text.trim().isEmpty ? 'gemma-2b-it-q4_0' : _localModel.text.trim(),
+        localModel: _localModel.text.trim().isEmpty ? 'gemma-4b-it-q4_0' : _localModel.text.trim(),
         localModelEnabled: _localModelEnabled,
         inferencePolicy: _policy,
         zeptoLocalEnabled: _zeptoLocalEnabled,
@@ -131,13 +133,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _healthStatus = result.join('\n'));
   }
 
+  void _applyNomadPreset() {
+    const base = 'http://127.0.0.1:8080/api';
+    setState(() {
+      _llmUrl.text = '$base/ollama/chat';
+      _memoryUrl.text = '$base/rag/files';
+      _sttUrl.text = '';
+      _ttsUrl.text = '';
+      _model.text = 'gemma3:4b';
+      _transport = 'https';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Settings do sistema')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      backgroundColor: _bg,
+      appBar: AppBar(backgroundColor: _bg, title: const Text('Settings do sistema')),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF071426), Color(0xFF050C16)],
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
           _section(
             title: 'Política de inferência',
             child: Column(
@@ -165,6 +188,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'Backends remotos / NOMAD',
             child: Column(
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _applyNomadPreset,
+                    icon: const Icon(Icons.hub),
+                    label: const Text('Aplicar preset Project NOMAD'),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 _field(_llmUrl, 'LLM endpoint (OpenAI/Ollama-compatible)'),
                 _field(_model, 'Modelo remoto padrão'),
                 _field(_llmToken, 'Token LLM', obscure: true),
@@ -215,7 +247,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           if (_healthStatus.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_healthStatus)),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -224,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0x3312C8DD), Color(0x22223852)]),
+          color: const Color(0xFF0B1828),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0x6600E5FF)),
         ),

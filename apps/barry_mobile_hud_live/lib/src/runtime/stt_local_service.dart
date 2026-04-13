@@ -8,19 +8,34 @@ class LocalSttService {
   LocalSttService(this._speech);
 
   final SpeechToText _speech;
+  bool _isInitialized = false;
 
   Future<void> startListening({
     required void Function(String partial, bool isFinal) onTranscript,
     required void Function(RuntimeFailure failure) onError,
   }) async {
-    final available = await _speech.initialize(
-      onError: (SpeechRecognitionError error) {
-        onError(RuntimeFailure(RuntimeErrorType.localUnavailable, 'Erro STT local: ${error.errorMsg}'));
-      },
-    );
+    if (_speech.isListening) {
+      await _speech.stop();
+    }
+    final available = _isInitialized
+        ? true
+        : await _speech.initialize(
+            onError: (SpeechRecognitionError error) {
+              final message = error.permanent
+                  ? 'Erro STT local permanente: ${error.errorMsg}'
+                  : 'Erro STT local: ${error.errorMsg}';
+              onError(RuntimeFailure(RuntimeErrorType.localUnavailable, message));
+            },
+          );
+    _isInitialized = available;
 
     if (!available) {
-      onError(RuntimeFailure(RuntimeErrorType.localUnavailable, 'STT local indisponível neste dispositivo.'));
+      onError(
+        RuntimeFailure(
+          RuntimeErrorType.localUnavailable,
+          'STT local indisponível neste dispositivo. Verifique permissão de microfone.',
+        ),
+      );
       return;
     }
 
