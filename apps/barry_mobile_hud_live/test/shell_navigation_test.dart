@@ -93,6 +93,11 @@ ConversationCoordinator _buildCoordinator(AppStorage storage) {
   );
 }
 
+Future<void> _pumpUi(WidgetTester tester, {Duration duration = const Duration(milliseconds: 350)}) async {
+  await tester.pump();
+  await tester.pump(duration);
+}
+
 void main() {
   testWidgets('abre Settings a partir do shell e salva sem crash', (tester) async {
     final storage = _MemoryStorage();
@@ -104,16 +109,16 @@ void main() {
         coordinatorBuilder: _buildCoordinator,
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpUi(tester, duration: const Duration(milliseconds: 600));
 
     await tester.tap(find.text('>'));
-    await tester.pumpAndSettle();
+    await _pumpUi(tester);
     await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
+    await _pumpUi(tester);
 
     expect(find.text('Settings do sistema'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
-    await tester.pumpAndSettle();
+    await _pumpUi(tester);
 
     expect(find.byType(MaterialApp), findsOneWidget);
   });
@@ -128,17 +133,17 @@ void main() {
         coordinatorBuilder: _buildCoordinator,
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpUi(tester, duration: const Duration(milliseconds: 600));
 
     await tester.tap(find.text('>'));
-    await tester.pumpAndSettle();
+    await _pumpUi(tester);
     await tester.tap(find.text('Conta do usuário'));
-    await tester.pumpAndSettle();
+    await _pumpUi(tester);
 
     expect(find.text('Conta do usuário'), findsOneWidget);
     await tester.enterText(find.widgetWithText(TextField, 'Nome de usuário'), 'Operador Teste');
     await tester.tap(find.widgetWithText(FilledButton, 'Salvar perfil'));
-    await tester.pumpAndSettle();
+    await _pumpUi(tester);
 
     expect(find.text('Conversa inicial'), findsOneWidget);
   });
