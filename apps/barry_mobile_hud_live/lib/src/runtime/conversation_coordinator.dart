@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import '../models.dart';
 import '../storage.dart';
@@ -37,6 +38,14 @@ class ConversationCoordinator {
   List<ConversationThread> conversations = <ConversationThread>[];
   String? activeConversationId;
   UserProfile profile = UserProfile.defaults;
+  bool _isSubmitting = false;
+  final Set<VoidCallback> _listeners = <VoidCallback>{};
+
+  bool get isBusy => _isSubmitting || state == AssistantState.processing || state == AssistantState.speaking;
+
+  void addListener(VoidCallback listener) => _listeners.add(listener);
+
+  void removeListener(VoidCallback listener) => _listeners.remove(listener);
 
   ConversationThread get activeConversation => conversations.firstWhere(
         (c) => c.id == activeConversationId,
@@ -49,7 +58,12 @@ class ConversationCoordinator {
     final loadedActive = await storage.loadActiveConversationId();
     profile = await storage.loadUserProfile();
     conversations = loadedConversations.isEmpty ? [_newConversation(seed: true)] : loadedConversations;
-    activeConversationId = loadedActive ?? conversations.first.id;
+    final hasLoadedActive = loadedActive != null && conversations.any((c) => c.id == loadedActive);
+    activeConversationId = hasLoadedActive ? loadedActive : conversations.first.id;
+    if (!hasLoadedActive) {
+      await storage.saveActiveConversationId(activeConversationId!);
+    }
+    _notifyListeners();
   }
 
   Future<void> createConversation() async {
@@ -58,79 +72,112 @@ class ConversationCoordinator {
     activeConversationId = thread.id;
     await storage.saveConversations(conversations);
     await storage.saveActiveConversationId(thread.id);
+    _notifyListeners();
   }
 
   Future<void> switchConversation(String id) async {
+    if (!conversations.any((c) => c.id == id)) return;
     activeConversationId = id;
     await storage.saveActiveConversationId(id);
+    _notifyListeners();
   }
 
   Future<void> updateSettings(AssistantSettings value) async {
     settings = value;
     await storage.saveSettings(value);
+    _notifyListeners();
   }
 
   Future<void> updateProfile(UserProfile value) async {
     profile = value;
     await storage.saveUserProfile(value);
+    _notifyListeners();
   }
 
   Future<void> toggleListening({required TranscriptConfirmation confirmTranscript}) async {
+    if (_isSubmitting) return;
+
     if (state == AssistantState.listening) {
       await sttService.stop();
       state = AssistantState.idle;
+      partialTranscript = '';
+      _notifyListeners();
       return;
+    }
+    if (state == AssistantState.speaking) {
+      await ttsService.stop();
+      state = AssistantState.idle;
     }
 
     state = AssistantState.listening;
     partialTranscript = '';
     lastError = '';
+    _notifyListeners();
 
-    await sttService.startListening(
-      onTranscript: (partial, isFinal) async {
-        partialTranscript = partial;
-        if (!isFinal || partial.trim().isEmpty) return;
+    try {
+      await sttService.startListening(
+        onTranscript: (partial, isFinal) async {
+          partialTranscript = partial;
+          _notifyListeners();
+          if (!isFinal || partial.trim().isEmpty) return;
+          if (_isSubmitting || state != AssistantState.listening) return;
 
-        if (settings.confirmTranscriptBeforeSend) {
-          final confirmed = await confirmTranscript(partial);
-          if (confirmed == null || confirmed.trim().isEmpty) {
-            state = AssistantState.idle;
+          await sttService.stop();
+
+          if (settings.confirmTranscriptBeforeSend) {
+            final confirmed = await confirmTranscript(partial);
+            if (confirmed == null || confirmed.trim().isEmpty) {
+              state = AssistantState.idle;
+              partialTranscript = '';
+              _notifyListeners();
+              return;
+            }
+            await submitText(confirmed.trim());
             return;
           }
-          await submitText(confirmed.trim());
-          return;
-        }
-        await submitText(partial.trim());
-      },
-      onError: (failure) {
-        state = AssistantState.error;
-        lastError = failure.message;
-      },
-    );
+          await submitText(partial.trim());
+        },
+        onError: (failure) {
+          state = AssistantState.error;
+          lastError = failure.message;
+          _notifyListeners();
+        },
+      );
+    } on RuntimeFailure catch (failure) {
+      state = AssistantState.error;
+      lastError = failure.message;
+      _notifyListeners();
+    } catch (e) {
+      state = AssistantState.error;
+      lastError = 'Falha ao iniciar escuta local: $e';
+      _notifyListeners();
+    }
   }
 
   Future<void> submitText(String text, {bool muteTts = false}) async {
+    final normalizedText = text.trim();
+    if (normalizedText.isEmpty || _isSubmitting) return;
+    _isSubmitting = true;
+
     final userMessage = ConversationMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       role: 'user',
-      text: text,
+      text: normalizedText,
       timestamp: DateTime.now(),
     );
 
     final current = activeConversation;
-    final updated = current.copyWith(
-      title: current.messages.isEmpty ? _deriveTitle(text) : current.title,
-      messages: [...current.messages, userMessage],
-    );
+    final updated = current.copyWith(messages: [...current.messages, userMessage]);
     _replaceConversation(updated);
 
     state = AssistantState.processing;
-    partialTranscript = text;
+    partialTranscript = normalizedText;
+    _notifyListeners();
 
     try {
-      final zeptoContext = await _resolveZeptoContext(text);
-      final prompt = zeptoContext == null ? text : '$text\n\nContexto ZeptoClaw:\n$zeptoContext';
-      final assistantText = _sanitizeAssistantText(await _resolveModelReply(prompt, updated.messages), text);
+      final zeptoContext = await _resolveZeptoContext(normalizedText);
+      final prompt = zeptoContext == null ? normalizedText : '$normalizedText\n\nContexto ZeptoClaw:\n$zeptoContext';
+      final assistantText = _sanitizeAssistantText(await _resolveModelReply(prompt, updated.messages), normalizedText);
 
       final assistantMessage = ConversationMessage(
         id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -147,12 +194,18 @@ class ConversationCoordinator {
       }
       state = AssistantState.idle;
       lastError = '';
+      _notifyListeners();
     } on RuntimeFailure catch (failure) {
       state = AssistantState.error;
       lastError = failure.message;
+      _notifyListeners();
     } catch (e) {
       state = AssistantState.error;
       lastError = 'Falha inesperada do runtime: $e';
+      _notifyListeners();
+    } finally {
+      _isSubmitting = false;
+      _notifyListeners();
     }
   }
 
@@ -221,17 +274,25 @@ class ConversationCoordinator {
   void _replaceConversation(ConversationThread updated) {
     conversations = conversations.map((c) => c.id == updated.id ? updated : c).toList(growable: false);
     unawaited(storage.saveConversations(conversations));
+    _notifyListeners();
   }
 
   ConversationThread _newConversation({bool seed = false}) {
     final now = DateTime.now();
+    final formattedMinute = now.minute.toString().padLeft(2, '0');
     return ConversationThread(
       id: now.microsecondsSinceEpoch.toString(),
-      title: seed ? 'Conversa inicial' : 'Nova conversa',
+      title: seed ? 'Conversa inicial' : 'Conversa ${now.day}/${now.month} ${now.hour}:$formattedMinute',
       createdAt: now,
       messages: <ConversationMessage>[],
     );
   }
 
-  String _deriveTitle(String text) => text.length <= 28 ? text : '${text.substring(0, 28)}…';
+  void _notifyListeners() {
+    if (_listeners.isEmpty) return;
+    final snapshot = List<VoidCallback>.from(_listeners);
+    for (final listener in snapshot) {
+      listener();
+    }
+  }
 }
