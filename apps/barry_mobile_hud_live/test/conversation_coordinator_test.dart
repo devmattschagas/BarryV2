@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:barry_mobile_hud_live/src/models.dart';
 import 'package:barry_mobile_hud_live/src/runtime/conversation_coordinator.dart';
 import 'package:barry_mobile_hud_live/src/runtime/errors.dart';
