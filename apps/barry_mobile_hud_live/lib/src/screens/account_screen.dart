@@ -41,7 +41,8 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Conta do usuário')),
+      backgroundColor: const Color(0xFF050C16),
+      appBar: AppBar(backgroundColor: const Color(0xFF050C16), title: const Text('Conta do usuário')),
       body: Stack(
         children: [
           Positioned.fill(
@@ -50,7 +51,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFF040A13), Color(0xFF091321)],
+                  colors: [Color(0xFF071426), Color(0xFF050C16)],
                 ),
               ),
             ),
@@ -62,7 +63,7 @@ class _AccountScreenState extends State<AccountScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0x7700E5FF)),
-                gradient: const LinearGradient(colors: [Color(0x3317C6DA), Color(0x221A2740)]),
+                color: const Color(0xFF0B1828),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +104,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   const Spacer(),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
+                    child: FilledButton(
                       onPressed: () {
                         Navigator.of(context).pop(
                           UserProfile(
@@ -112,8 +113,7 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.save),
-                      label: const Text('Salvar perfil'),
+                      child: const Text('Salvar perfil'),
                     ),
                   ),
                 ],

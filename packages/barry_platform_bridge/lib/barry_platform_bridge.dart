@@ -28,6 +28,8 @@ class PlatformLocalLlmEngine implements LocalLlmEngine {
     final output = await _channel.invokeMethod<String>('infer', {
       'prompt': prompt,
       if (model != null) 'model': model,
+      'endpoint': 'http://127.0.0.1:11434/api/generate',
+      'timeoutMs': 45000,
     });
     return output ?? '';
   }

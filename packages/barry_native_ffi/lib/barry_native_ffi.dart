@@ -109,6 +109,8 @@ class ZeptoClawResult {
 class ZeptoClawExecutor {
   late final int Function(Pointer<Utf8>, Pointer<Utf8>, int) _executeScript;
   late final int Function() _healthCheck;
+  late final int Function(Pointer<Utf8>, int) _listCapabilities;
+  late final int Function(Pointer<Utf8>, int) _getDeviceState;
 
   ZeptoClawExecutor() {
     try {
@@ -117,13 +119,25 @@ class ZeptoClawExecutor {
           .lookup<NativeFunction<Int32 Function(Pointer<Utf8>, Pointer<Utf8>, Int32)>>('zeptoclaw_execute_script')
           .asFunction();
       _healthCheck = lib.lookup<NativeFunction<Int32 Function()>>('zeptoclaw_health_check').asFunction();
+      _listCapabilities = lib
+          .lookup<NativeFunction<Int32 Function(Pointer<Utf8>, Int32)>>('zeptoclaw_list_capabilities')
+          .asFunction();
+      _getDeviceState = lib
+          .lookup<NativeFunction<Int32 Function(Pointer<Utf8>, Int32)>>('zeptoclaw_get_device_state')
+          .asFunction();
     } catch (_) {
       _executeScript = (_, __, ___) => -1;
       _healthCheck = () => 0;
+      _listCapabilities = (_, __) => -1;
+      _getDeviceState = (_, __) => -1;
     }
   }
 
-  bool get isHealthy => _healthCheck() == 1;
+  bool get isHealthy {
+    if (_healthCheck() != 1) return false;
+    final caps = _readNative(_listCapabilities);
+    return caps.isNotEmpty;
+  }
 
   ZeptoClawResult executeScript({required String command, required Map<String, Object?> payload, int timeoutMs = 2000}) {
     if (!CommandPolicies.zeptoClawCloud.canExecute(command)) {
@@ -133,10 +147,33 @@ class ZeptoClawExecutor {
     final payloadJson = jsonEncode(payload).toNativeUtf8();
     try {
       final code = _executeScript(cmd, payloadJson, timeoutMs);
-      return ZeptoClawResult(command: command, exitCode: code, payload: payload);
+      final capabilities = _readNative(_listCapabilities).split(',').where((e) => e.trim().isNotEmpty).toList(growable: false);
+      final stateRaw = _readNative(_getDeviceState);
+      final state = stateRaw.isEmpty ? const <String, Object?>{} : (jsonDecode(stateRaw) as Map<String, dynamic>);
+      return ZeptoClawResult(
+        command: command,
+        exitCode: code,
+        payload: {
+          ...payload,
+          'capabilities': capabilities,
+          'device_state': state,
+          'native_ok': code == 0,
+        },
+      );
     } finally {
       calloc.free(cmd);
       calloc.free(payloadJson);
+    }
+  }
+
+  String _readNative(int Function(Pointer<Utf8>, int) reader) {
+    final buf = calloc<Uint8>(2048).cast<Utf8>();
+    try {
+      final code = reader(buf, 2048);
+      if (code != 0) return '';
+      return buf.toDartString();
+    } finally {
+      calloc.free(buf);
     }
   }
 }

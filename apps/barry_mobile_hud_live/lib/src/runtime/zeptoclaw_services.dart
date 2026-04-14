@@ -28,7 +28,8 @@ class ZeptoClawLocalExecutor {
       throw RuntimeFailure(RuntimeErrorType.unavailable, 'ZeptoClaw local falhou para $command (exit=${result.exitCode}).');
     }
 
-    return 'ZeptoClaw local executou "$command" com sucesso.';
+    final device = result.payload['device_state'];
+    return 'ZeptoClaw local executou "$command" com sucesso. device_state=$device';
   }
 
   String? _resolveCommand(String prompt) {

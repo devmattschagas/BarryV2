@@ -126,7 +126,7 @@ class AssistantSettings {
     timeoutMs: 30000,
     transport: 'https',
     confirmTranscriptBeforeSend: true,
-    localModel: 'gemma-2b-it-q4_0',
+    localModel: 'gemma-4b-it-q4_0',
     localModelEnabled: true,
     inferencePolicy: InferencePolicy.hybridPreferLocal,
     zeptoLocalEnabled: true,
@@ -210,7 +210,7 @@ class AssistantSettings {
         timeoutMs: (map['timeoutMs'] as num?)?.toInt() ?? 30000,
         transport: map['transport'] as String? ?? 'https',
         confirmTranscriptBeforeSend: map['confirmTranscriptBeforeSend'] as bool? ?? true,
-        localModel: map['localModel'] as String? ?? 'gemma-2b-it-q4_0',
+        localModel: map['localModel'] as String? ?? 'gemma-4b-it-q4_0',
         localModelEnabled: map['localModelEnabled'] as bool? ?? true,
         inferencePolicy: InferencePolicy.values.firstWhere(
           (p) => p.name == map['inferencePolicy'],
