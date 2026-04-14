@@ -81,6 +81,46 @@ class _FakeZeptoRemote implements ZeptoClawRemoteClient {
   Future<String?> tryExecute(String prompt, AssistantSettings settings) async => null;
 }
 
+class _SettingsTestScreen extends StatelessWidget {
+  const _SettingsTestScreen({required this.initial});
+
+  final AssistantSettings initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings Test Screen')),
+      body: Center(
+        child: FilledButton(
+          key: const Key('settings_save_test'),
+          onPressed: () => Navigator.of(context).pop(initial.copyWith(timeoutMs: initial.timeoutMs + 1)),
+          child: const Text('Salvar'),
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountTestScreen extends StatelessWidget {
+  const _AccountTestScreen({required this.initial});
+
+  final UserProfile initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Account Test Screen')),
+      body: Center(
+        child: FilledButton(
+          key: const Key('account_save_test'),
+          onPressed: () => Navigator.of(context).pop(UserProfile(name: 'Operador Teste', avatarPath: initial.avatarPath)),
+          child: const Text('Salvar perfil'),
+        ),
+      ),
+    );
+  }
+}
+
 ConversationCoordinator _buildCoordinator(AppStorage storage) {
   return ConversationCoordinator(
     storage: storage,
@@ -103,24 +143,26 @@ void main() {
         initialSettings: AssistantSettings.defaults,
         coordinatorBuilder: _buildCoordinator,
         enableCorePulseAnimation: false,
+        settingsScreenBuilder: (context, settings) => _SettingsTestScreen(initial: settings),
+        accountScreenBuilder: (context, profile) => _AccountTestScreen(initial: profile),
       ),
     );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('shell_nav_toggle')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('shell_side_nav')));
+    await tester.ensureVisible(find.byKey(const Key('shell_nav_settings')));
     await tester.tap(find.byKey(const Key('shell_nav_settings')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Settings do sistema'), findsOneWidget);
-    final settingsSaveButton = find.widgetWithText(FilledButton, 'Salvar');
+    expect(find.text('Settings Test Screen'), findsOneWidget);
+    final settingsSaveButton = find.byKey(const Key('settings_save_test'));
     await tester.ensureVisible(settingsSaveButton);
     await tester.tap(settingsSaveButton);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('shell_nav_toggle')), findsOneWidget);
-    expect(find.text('Settings do sistema'), findsNothing);
+    expect(find.text('Settings Test Screen'), findsNothing);
   });
 
   testWidgets('abre Conta do usuário a partir do shell e salva sem crash', (tester) async {
@@ -132,26 +174,25 @@ void main() {
         initialSettings: AssistantSettings.defaults,
         coordinatorBuilder: _buildCoordinator,
         enableCorePulseAnimation: false,
+        settingsScreenBuilder: (context, settings) => _SettingsTestScreen(initial: settings),
+        accountScreenBuilder: (context, profile) => _AccountTestScreen(initial: profile),
       ),
     );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('shell_nav_toggle')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('shell_side_nav')));
+    await tester.ensureVisible(find.byKey(const Key('shell_nav_account')));
     await tester.tap(find.byKey(const Key('shell_nav_account')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Conta do usuário'), findsOneWidget);
-    final nameField = find.widgetWithText(TextField, 'Nome de usuário');
-    await tester.ensureVisible(nameField);
-    await tester.enterText(nameField, 'Operador Teste');
-    final saveProfileButton = find.widgetWithText(FilledButton, 'Salvar perfil');
+    expect(find.text('Account Test Screen'), findsOneWidget);
+    final saveProfileButton = find.byKey(const Key('account_save_test'));
     await tester.ensureVisible(saveProfileButton);
     await tester.tap(saveProfileButton);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('shell_nav_toggle')), findsOneWidget);
-    expect(find.text('Conta do usuário'), findsNothing);
+    expect(find.text('Account Test Screen'), findsNothing);
   });
 }

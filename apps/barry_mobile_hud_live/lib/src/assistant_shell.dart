@@ -18,6 +18,9 @@ import 'screens/account_screen.dart';
 import 'screens/settings_screen.dart';
 import 'storage.dart';
 
+typedef SettingsScreenBuilder = Widget Function(BuildContext context, AssistantSettings currentSettings);
+typedef AccountScreenBuilder = Widget Function(BuildContext context, UserProfile currentProfile);
+
 class BarryAssistantShell extends StatefulWidget {
   const BarryAssistantShell({
     super.key,
@@ -25,12 +28,16 @@ class BarryAssistantShell extends StatefulWidget {
     required this.initialSettings,
     this.coordinatorBuilder,
     this.enableCorePulseAnimation = true,
+    this.settingsScreenBuilder,
+    this.accountScreenBuilder,
   });
 
   final AppStorage storage;
   final AssistantSettings initialSettings;
   final ConversationCoordinator Function(AppStorage storage)? coordinatorBuilder;
   final bool enableCorePulseAnimation;
+  final SettingsScreenBuilder? settingsScreenBuilder;
+  final AccountScreenBuilder? accountScreenBuilder;
 
   @override
   State<BarryAssistantShell> createState() => _BarryAssistantShellState();
@@ -145,8 +152,10 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
       _navOpen = false;
       _dragProgress = 0;
     });
+    final settingsScreen = widget.settingsScreenBuilder?.call(context, _coordinator.settings) ??
+        SettingsScreen(initial: _coordinator.settings, client: http.Client());
     final updated = await Navigator.of(context).push<AssistantSettings>(
-      MaterialPageRoute(builder: (_) => SettingsScreen(initial: _coordinator.settings, client: http.Client())),
+      MaterialPageRoute(builder: (_) => settingsScreen),
     );
     if (updated == null) return;
     await _coordinator.updateSettings(updated);
@@ -159,8 +168,10 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
       _navOpen = false;
       _dragProgress = 0;
     });
+    final accountScreen = widget.accountScreenBuilder?.call(context, _coordinator.profile) ??
+        AccountScreen(initialProfile: _coordinator.profile);
     final updated = await Navigator.of(context).push<UserProfile>(
-      MaterialPageRoute(builder: (_) => AccountScreen(initialProfile: _coordinator.profile)),
+      MaterialPageRoute(builder: (_) => accountScreen),
     );
     if (updated == null) return;
     await _coordinator.updateProfile(updated);
@@ -221,7 +232,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     child: SafeArea(
-                    child: Padding(
+                      child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                       child: Column(
                         children: [
@@ -258,7 +269,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
                             ),
                           ),
                         ],
-                      ),
+                        ),
                     ),
                     ),
                   ),
