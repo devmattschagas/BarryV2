@@ -47,6 +47,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
   final TextEditingController _composerController = TextEditingController();
   late final ConversationCoordinator _coordinator;
   late final AnimationController _pulseController;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   bool _isMicMuted = false;
   bool _isVoiceMuted = false;
@@ -154,7 +155,9 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     });
     final settingsScreen = widget.settingsScreenBuilder?.call(context, _coordinator.settings) ??
         SettingsScreen(initial: _coordinator.settings, client: http.Client());
-    final updated = await Navigator.of(context).push<AssistantSettings>(
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) return;
+    final updated = await navigator.push<AssistantSettings>(
       MaterialPageRoute(builder: (_) => settingsScreen),
     );
     if (updated == null) return;
@@ -170,7 +173,9 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     });
     final accountScreen = widget.accountScreenBuilder?.call(context, _coordinator.profile) ??
         AccountScreen(initialProfile: _coordinator.profile);
-    final updated = await Navigator.of(context).push<UserProfile>(
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) return;
+    final updated = await navigator.push<UserProfile>(
       MaterialPageRoute(builder: (_) => accountScreen),
     );
     if (updated == null) return;
@@ -217,6 +222,7 @@ class _BarryAssistantShellState extends State<BarryAssistantShell> with SingleTi
     final navProgress = _navOpen ? 1.0 : _dragProgress;
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
